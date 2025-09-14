@@ -1,5 +1,5 @@
 import { useSeoMeta } from '@unhead/react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowUp, ArrowDown, MessageSquare, Share, Calendar, User, Search, Plus } from 'lucide-react';
+import { useNostr } from '@/hooks/useNostr';
+import type { NostrEvent } from '@nostrify/nostrify';
 
 interface Post {
   id: string;
@@ -22,69 +24,75 @@ interface Post {
 }
 
 const Forum = () => {
-  const [posts] = useState<Post[]>([
-    {
-      id: '1',
-      title: 'Bitcoin as the Third Way: A Non-Violent Revolution',
-      content: 'This idea of Bitcoin being the third way politically is really important because it\'s a disengagement through technology in the most radical way of nonviolence...',
-      author: 'hodl_american',
-      category: 'Bitcoin',
-      upvotes: 127,
-      downvotes: 8,
-      comments: 45,
-      timestamp: '2024-01-15T10:30:00Z',
-      isStickied: true,
-    },
-    {
-      id: '2',
-      title: 'Defending Free Speech in Dangerous Times',
-      content: 'The recent events have shown us how crucial it is to protect our First Amendment rights. We must speak ten times louder when faced with attempts to silence us.',
-      author: 'constitutional_defender',
-      category: 'Free Speech',
-      upvotes: 89,
-      downvotes: 12,
-      comments: 32,
-      timestamp: '2024-01-15T08:45:00Z',
-    },
-    {
-      id: '3',
-      title: 'The Banality of Evil in Modern Politics',
-      content: 'Hannah Arendt\'s concept of the "banality of evil" perfectly describes what we\'re seeing today. People supporting violence without real thought or reflection.',
-      author: 'philosophy_student',
-      category: 'Philosophy',
-      upvotes: 156,
-      downvotes: 23,
-      comments: 67,
-      timestamp: '2024-01-14T16:20:00Z',
-    },
-    {
-      id: '4',
-      title: 'Building Bridges Through Technology',
-      content: 'Instead of fighting for control of existing systems, we should focus on building new ones that serve humanity better.',
-      author: 'tech_optimist',
-      category: 'Technology',
-      upvotes: 78,
-      downvotes: 5,
-      comments: 28,
-      timestamp: '2024-01-14T14:10:00Z',
-    },
-    {
-      id: '5',
-      title: 'The American Renaissance: Returning to Core Principles',
-      content: 'We need to get back to the founding principles that made America great while embracing the technological innovations of our time.',
-      author: 'patriot_builder',
-      category: 'Politics',
-      upvotes: 201,
-      downvotes: 34,
-      comments: 89,
-      timestamp: '2024-01-14T12:00:00Z',
-    }
-  ]);
+  // Load the Orange Party members from nostr.json
+  const orangePartyMembers = useMemo(() => {
+    return [
+      'd3d74124ddfb5bdc61b8f18d17c3335bbb4f8c71182a35ee27314a49a4eb7b1d', // gary, biz
+      '085c56232b428ca56c79e0abc6170a120cd87b01b2e18e30dfdc1fac051d9239', // lexy
+      'a44a09581824710735565793993f841d44b36284ab9552ad4a6e124132d1c1f9', // scott
+    ];
+  }, []);
+
+  // Query recent text notes (kind 1) from Orange Party members
+  const { events: nostrEvents } = useNostr({
+    filters: [{
+      kinds: [1], // Text notes
+      authors: orangePartyMembers,
+      limit: 50,
+    }],
+  });
+
+  // Transform Nostr events into forum posts
+  const posts = useMemo(() => {
+    if (!nostrEvents) return [];
+
+    return nostrEvents
+      .map((event: NostrEvent) => {
+        const content = event.content || '';
+        const firstLine = content.split('\n')[0] || content.substring(0, 100);
+
+        // Categorize based on content keywords
+        let category = 'General';
+        const lowerContent = content.toLowerCase();
+        if (lowerContent.includes('bitcoin') || lowerContent.includes('btc') || lowerContent.includes('sats')) {
+          category = 'Bitcoin';
+        } else if (lowerContent.includes('free speech') || lowerContent.includes('first amendment') || lowerContent.includes('censorship')) {
+          category = 'Free Speech';
+        } else if (lowerContent.includes('technology') || lowerContent.includes('tech') || lowerContent.includes('innovation')) {
+          category = 'Technology';
+        } else if (lowerContent.includes('politics') || lowerContent.includes('government') || lowerContent.includes('political')) {
+          category = 'Politics';
+        } else if (lowerContent.includes('philosophy') || lowerContent.includes('nihilism') || lowerContent.includes('meaning')) {
+          category = 'Philosophy';
+        }
+
+        // Get author name from nostr.json mapping
+        const authorMap: Record<string, string> = {
+          'd3d74124ddfb5bdc61b8f18d17c3335bbb4f8c71182a35ee27314a49a4eb7b1d': 'gary',
+          '085c56232b428ca56c79e0abc6170a120cd87b01b2e18e30dfdc1fac051d9239': 'lexy',
+          'a44a09581824710735565793993f841d44b36284ab9552ad4a6e124132d1c1f9': 'scott',
+        };
+
+        return {
+          id: event.id,
+          title: firstLine.length > 80 ? firstLine.substring(0, 80) + '...' : firstLine,
+          content: content,
+          author: authorMap[event.pubkey] || event.pubkey.substring(0, 8),
+          category,
+          upvotes: Math.floor(Math.random() * 200) + 10, // Random for demo
+          downvotes: Math.floor(Math.random() * 20),
+          comments: Math.floor(Math.random() * 50),
+          timestamp: new Date(event.created_at * 1000).toISOString(),
+          isStickied: false,
+        };
+      })
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }, [nostrEvents]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
 
-  const categories = ['all', 'Bitcoin', 'Free Speech', 'Philosophy', 'Technology', 'Politics'];
+  const categories = ['all', 'Bitcoin', 'Free Speech', 'Philosophy', 'Technology', 'Politics', 'General'];
 
   const filteredPosts = posts.filter(post => {
     const matchesSearch = post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -208,9 +216,12 @@ const Forum = () => {
               </CardHeader>
               <CardContent className="text-sm">
                 <p className="text-gray-600 dark:text-gray-300 mb-4">
-                  A community discussion platform exploring Bitcoin, free speech, and peaceful solutions to societal challenges.
+                  Real discussions from Orange Party members on Nostr. Exploring Bitcoin, free speech, and peaceful solutions to societal challenges.
                 </p>
                 <Badge variant="secondary" className="mb-2 bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+                  Live Nostr Feed
+                </Badge>
+                <Badge variant="secondary" className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
                   Not an Official Political Party
                 </Badge>
               </CardContent>
@@ -247,7 +258,7 @@ const Forum = () => {
               </div>
 
               <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
-                <TabsList className="grid grid-cols-3 sm:grid-cols-6 w-full">
+                <TabsList className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 w-full">
                   {categories.map((category) => (
                     <TabsTrigger key={category} value={category} className="capitalize">
                       {category}
@@ -259,18 +270,34 @@ const Forum = () => {
 
             {/* Posts */}
             <div className="space-y-4">
-              {filteredPosts.map((post) => (
-                <PostCard key={post.id} post={post} />
-              ))}
-
-              {filteredPosts.length === 0 && (
+              {!nostrEvents ? (
                 <Card className="border-gray-200 dark:border-gray-700">
                   <CardContent className="text-center py-12">
-                    <p className="text-gray-500 dark:text-gray-400">
-                      No posts found matching your criteria.
+                    <div className="animate-pulse">
+                      <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-3/4 mx-auto mb-4"></div>
+                      <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-1/2 mx-auto"></div>
+                    </div>
+                    <p className="text-gray-500 dark:text-gray-400 mt-4">
+                      Loading Orange Party discussions from Nostr...
                     </p>
                   </CardContent>
                 </Card>
+              ) : (
+                <>
+                  {filteredPosts.map((post) => (
+                    <PostCard key={post.id} post={post} />
+                  ))}
+
+                  {filteredPosts.length === 0 && (
+                    <Card className="border-gray-200 dark:border-gray-700">
+                      <CardContent className="text-center py-12">
+                        <p className="text-gray-500 dark:text-gray-400">
+                          No posts found matching your criteria.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )}
+                </>
               )}
             </div>
 
