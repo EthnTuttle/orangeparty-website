@@ -5,7 +5,7 @@ import { defineConfig } from "vitest/config";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ command }) => ({
-  base: command === 'build' ? (process.env.GITHUB_REPOSITORY?.split('/')[1] ? `/${process.env.GITHUB_REPOSITORY.split('/')[1]}/` : '/orangeparty-website/') : '/',
+  base: command === 'build' ? '/orangeparty-website/' : '/',
   server: {
     host: "::",
     port: 8080,
