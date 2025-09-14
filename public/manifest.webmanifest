@@ -1,0 +1,16 @@
+{
+  "name": "Orange Party - A Third Way Forward",
+  "short_name": "Orange Party",
+  "description": "The Orange Party represents a peaceful, technology-driven path beyond traditional left-right politics through Bitcoin and free speech.",
+  "theme_color": "#f97316",
+  "background_color": "#fff7ed",
+  "display": "standalone",
+  "start_url": "/",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ]
+}
