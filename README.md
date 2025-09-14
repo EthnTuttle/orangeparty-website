@@ -233,4 +233,4 @@ Open source - build amazing Nostr applications and help grow the decentralized w
 
 **"Vibed with MKStack"** - [Learn more about MKStack](https://soapbox.pub/mkstack)
 
-*Build your Nostr app in minutes, not months. Start with AI, deploy instantly.*
+*Build your Nostr app in minutes, not months. Start with AI, deploy instantly.*# GitHub Pages Deployment Status
