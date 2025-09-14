@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowUp, ArrowDown, MessageSquare, Share, Calendar, User, Search, Plus } from 'lucide-react';
 import { useNostr } from '@/hooks/useNostr';
+import { CreatePostDialog } from '@/components/CreatePostDialog';
+import { ReplyDialog } from '@/components/ReplyDialog';
 import type { NostrEvent } from '@nostrify/nostrify';
 
 interface Post {
@@ -21,6 +23,9 @@ interface Post {
   comments: number;
   timestamp: string;
   isStickied?: boolean;
+  replies?: Post[];
+  isReply?: boolean;
+  parentId?: string;
 }
 
 const Forum = () => {
@@ -42,17 +47,40 @@ const Forum = () => {
     }],
   });
 
-  // Transform Nostr events into forum posts
+  // Transform Nostr events into forum posts with threading
   const posts = useMemo(() => {
     if (!nostrEvents) return [];
 
-    return nostrEvents
-      .map((event: NostrEvent) => {
-        const content = event.content || '';
-        const firstLine = content.split('\n')[0] || content.substring(0, 100);
+    const authorMap: Record<string, string> = {
+      'd3d74124ddfb5bdc61b8f18d17c3335bbb4f8c71182a35ee27314a49a4eb7b1d': 'gary',
+      '085c56232b428ca56c79e0abc6170a120cd87b01b2e18e30dfdc1fac051d9239': 'lexy',
+      'a44a09581824710735565793993f841d44b36284ab9552ad4a6e124132d1c1f9': 'scott',
+    };
 
-        // Categorize based on content keywords
-        let category = 'General';
+    // Convert all events to posts first
+    const allPosts = nostrEvents.map((event: NostrEvent) => {
+      const content = event.content || '';
+      const firstLine = content.split('\n')[0] || content.substring(0, 100);
+
+      // Check if this is a reply by looking for 'e' tags
+      const replyTags = event.tags?.filter(tag => tag[0] === 'e') || [];
+      const isReply = replyTags.length > 0;
+      const parentId = isReply ? replyTags[0][1] : undefined;
+
+      // Categorize based on topic tags first, then content keywords
+      let category = 'General';
+      const topicTag = event.tags?.find(tag => tag[0] === 't')?.[1];
+      if (topicTag) {
+        category = {
+          'bitcoin': 'Bitcoin',
+          'free-speech': 'Free Speech',
+          'philosophy': 'Philosophy',
+          'technology': 'Technology',
+          'politics': 'Politics',
+          'general': 'General',
+        }[topicTag] || 'General';
+      } else {
+        // Fall back to content-based categorization
         const lowerContent = content.toLowerCase();
         if (lowerContent.includes('bitcoin') || lowerContent.includes('btc') || lowerContent.includes('sats')) {
           category = 'Bitcoin';
@@ -65,32 +93,66 @@ const Forum = () => {
         } else if (lowerContent.includes('philosophy') || lowerContent.includes('nihilism') || lowerContent.includes('meaning')) {
           category = 'Philosophy';
         }
+      }
 
-        // Get author name from nostr.json mapping
-        const authorMap: Record<string, string> = {
-          'd3d74124ddfb5bdc61b8f18d17c3335bbb4f8c71182a35ee27314a49a4eb7b1d': 'gary',
-          '085c56232b428ca56c79e0abc6170a120cd87b01b2e18e30dfdc1fac051d9239': 'lexy',
-          'a44a09581824710735565793993f841d44b36284ab9552ad4a6e124132d1c1f9': 'scott',
-        };
+      return {
+        id: event.id,
+        title: isReply ? `Re: ${firstLine.substring(0, 60)}...` : (firstLine.length > 80 ? firstLine.substring(0, 80) + '...' : firstLine),
+        content: content,
+        author: authorMap[event.pubkey] || event.pubkey.substring(0, 8),
+        category,
+        upvotes: Math.floor(Math.random() * 200) + 10, // Random for demo
+        downvotes: Math.floor(Math.random() * 20),
+        comments: 0, // Will be calculated
+        timestamp: new Date(event.created_at * 1000).toISOString(),
+        isStickied: false,
+        isReply,
+        parentId,
+        replies: [],
+      };
+    });
 
-        return {
-          id: event.id,
-          title: firstLine.length > 80 ? firstLine.substring(0, 80) + '...' : firstLine,
-          content: content,
-          author: authorMap[event.pubkey] || event.pubkey.substring(0, 8),
-          category,
-          upvotes: Math.floor(Math.random() * 200) + 10, // Random for demo
-          downvotes: Math.floor(Math.random() * 20),
-          comments: Math.floor(Math.random() * 50),
-          timestamp: new Date(event.created_at * 1000).toISOString(),
-          isStickied: false,
-        };
-      })
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    // Build threading structure
+    const topLevelPosts: Post[] = [];
+    const postMap = new Map<string, Post>();
+
+    // First pass: add all posts to map
+    allPosts.forEach(post => {
+      postMap.set(post.id, post);
+    });
+
+    // Second pass: build threading
+    allPosts.forEach(post => {
+      if (post.isReply && post.parentId) {
+        const parent = postMap.get(post.parentId);
+        if (parent) {
+          parent.replies = parent.replies || [];
+          parent.replies.push(post);
+          parent.comments = (parent.replies?.length || 0);
+        }
+      } else {
+        topLevelPosts.push(post);
+      }
+    });
+
+    // Sort top-level posts by date, sort replies within each thread
+    topLevelPosts.forEach(post => {
+      if (post.replies) {
+        post.replies.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      }
+    });
+
+    return topLevelPosts.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [nostrEvents]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [showCreatePost, setShowCreatePost] = useState(false);
+  const [replyDialog, setReplyDialog] = useState<{ open: boolean; parentEventId: string; parentAuthor: string }>({
+    open: false,
+    parentEventId: '',
+    parentAuthor: '',
+  });
 
   const categories = ['all', 'Bitcoin', 'Free Speech', 'Philosophy', 'Technology', 'Politics', 'General'];
 
@@ -123,64 +185,117 @@ const Forum = () => {
   };
 
   const PostCard = ({ post }: { post: Post }) => (
-    <Card className={`border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow ${post.isStickied ? 'border-orange-300 bg-orange-50 dark:bg-orange-900/20' : ''}`}>
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              {post.isStickied && (
-                <Badge variant="secondary" className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 text-xs">
-                  Pinned
+    <div className="space-y-2">
+      <Card className={`border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow ${post.isStickied ? 'border-orange-300 bg-orange-50 dark:bg-orange-900/20' : ''}`}>
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                {post.isStickied && (
+                  <Badge variant="secondary" className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 text-xs">
+                    Pinned
+                  </Badge>
+                )}
+                <Badge variant="outline" className="text-xs">
+                  {post.category}
                 </Badge>
-              )}
-              <Badge variant="outline" className="text-xs">
-                {post.category}
-              </Badge>
+              </div>
+              <CardTitle className="text-lg hover:text-orange-600 dark:hover:text-orange-400 cursor-pointer">
+                {post.title}
+              </CardTitle>
+              <CardDescription className="flex items-center gap-4 text-sm mt-2">
+                <span className="flex items-center gap-1">
+                  <User className="h-3 w-3" />
+                  u/{post.author}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  {formatTimeAgo(post.timestamp)}
+                </span>
+              </CardDescription>
             </div>
-            <CardTitle className="text-lg hover:text-orange-600 dark:hover:text-orange-400 cursor-pointer">
-              {post.title}
-            </CardTitle>
-            <CardDescription className="flex items-center gap-4 text-sm mt-2">
-              <span className="flex items-center gap-1">
-                <User className="h-3 w-3" />
-                u/{post.author}
-              </span>
-              <span className="flex items-center gap-1">
-                <Calendar className="h-3 w-3" />
-                {formatTimeAgo(post.timestamp)}
-              </span>
-            </CardDescription>
           </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <p className="text-gray-600 dark:text-gray-300 mb-4 line-clamp-3">
-          {post.content}
-        </p>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" size="sm" className="h-8 px-2 hover:bg-green-100 dark:hover:bg-green-900">
-                <ArrowUp className="h-4 w-4" />
+        </CardHeader>
+        <CardContent>
+          <p className="text-gray-600 dark:text-gray-300 mb-4 whitespace-pre-wrap">
+            {post.content}
+          </p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="sm" className="h-8 px-2 hover:bg-green-100 dark:hover:bg-green-900">
+                  <ArrowUp className="h-4 w-4" />
+                </Button>
+                <span className="text-sm font-medium text-green-600 dark:text-green-400 min-w-[2rem] text-center">
+                  {post.upvotes - post.downvotes}
+                </span>
+                <Button variant="ghost" size="sm" className="h-8 px-2 hover:bg-red-100 dark:hover:bg-red-900">
+                  <ArrowDown className="h-4 w-4" />
+                </Button>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8"
+                onClick={() => setReplyDialog({ open: true, parentEventId: post.id, parentAuthor: post.author })}
+              >
+                <MessageSquare className="h-4 w-4 mr-1" />
+                Reply
               </Button>
-              <span className="text-sm font-medium text-green-600 dark:text-green-400 min-w-[2rem] text-center">
-                {post.upvotes - post.downvotes}
+              <span className="text-sm text-gray-500">
+                {post.comments} {post.comments === 1 ? 'reply' : 'replies'}
               </span>
-              <Button variant="ghost" size="sm" className="h-8 px-2 hover:bg-red-100 dark:hover:bg-red-900">
-                <ArrowDown className="h-4 w-4" />
+              <Button variant="ghost" size="sm" className="h-8">
+                <Share className="h-4 w-4" />
               </Button>
             </div>
-            <Button variant="ghost" size="sm" className="h-8">
-              <MessageSquare className="h-4 w-4 mr-1" />
-              {post.comments}
-            </Button>
-            <Button variant="ghost" size="sm" className="h-8">
-              <Share className="h-4 w-4" />
-            </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Threaded Replies */}
+      {post.replies && post.replies.length > 0 && (
+        <div className="ml-6 space-y-2 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
+          {post.replies.map((reply) => (
+            <Card key={reply.id} className="border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <User className="h-3 w-3" />
+                  <span className="text-sm font-medium">u/{reply.author}</span>
+                  <span className="text-xs text-gray-500">
+                    {formatTimeAgo(reply.timestamp)}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                  {reply.content}
+                </p>
+                <div className="flex items-center gap-2 mt-2">
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="sm" className="h-6 px-1 hover:bg-green-100 dark:hover:bg-green-900">
+                      <ArrowUp className="h-3 w-3" />
+                    </Button>
+                    <span className="text-xs text-green-600 dark:text-green-400">
+                      {reply.upvotes - reply.downvotes}
+                    </span>
+                    <Button variant="ghost" size="sm" className="h-6 px-1 hover:bg-red-100 dark:hover:bg-red-900">
+                      <ArrowDown className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs"
+                    onClick={() => setReplyDialog({ open: true, parentEventId: post.id, parentAuthor: reply.author })}
+                  >
+                    Reply
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
-      </CardContent>
-    </Card>
+      )}
+    </div>
   );
 
   return (
@@ -198,7 +313,10 @@ const Forum = () => {
             </div>
           </Link>
           <div className="flex items-center space-x-4">
-            <Button className="bg-orange-500 hover:bg-orange-600 text-white">
+            <Button
+              className="bg-orange-500 hover:bg-orange-600 text-white"
+              onClick={() => setShowCreatePost(true)}
+            >
               <Plus className="h-4 w-4 mr-2" />
               New Post
             </Button>
@@ -314,6 +432,19 @@ const Forum = () => {
           </div>
         </div>
       </div>
+
+      {/* Dialogs */}
+      <CreatePostDialog
+        open={showCreatePost}
+        onOpenChange={setShowCreatePost}
+      />
+
+      <ReplyDialog
+        open={replyDialog.open}
+        onOpenChange={(open) => setReplyDialog(prev => ({ ...prev, open }))}
+        parentEventId={replyDialog.parentEventId}
+        parentAuthor={replyDialog.parentAuthor}
+      />
     </div>
   );
 };
