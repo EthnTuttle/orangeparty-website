@@ -5,7 +5,7 @@ import { defineConfig } from "vitest/config";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ command }) => ({
-  base: command === 'build' ? '/orangeparty-website/' : '/',
+  base: '/',
   server: {
     host: "::",
     port: 8080,
