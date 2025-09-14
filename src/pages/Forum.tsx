@@ -10,6 +10,7 @@ import { ArrowUp, ArrowDown, MessageSquare, Share, Calendar, User, Search, Plus 
 import { useNostr } from '@/hooks/useNostr';
 import { CreatePostDialog } from '@/components/CreatePostDialog';
 import { ReplyDialog } from '@/components/ReplyDialog';
+import { LoginArea } from '@/components/auth/LoginArea';
 import type { NostrEvent } from '@nostrify/nostrify';
 
 interface Post {
@@ -301,25 +302,31 @@ const Forum = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <header className="p-6 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link to="/" className="flex items-center space-x-3">
+      <header className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+          <Link to="/" className="flex items-center space-x-3 min-w-0">
             <div className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center">
               <span className="text-white font-bold text-xl">🍊</span>
             </div>
-            <div>
+            <div className="hidden sm:block">
               <h1 className="text-2xl font-bold text-orange-600 dark:text-orange-400">Orange Party</h1>
               <p className="text-sm text-gray-600 dark:text-gray-400">Community Forum</p>
             </div>
           </Link>
-          <div className="flex items-center space-x-4">
+
+          <div className="flex items-center space-x-3 sm:space-x-4">
             <Button
               className="bg-orange-500 hover:bg-orange-600 text-white"
               onClick={() => setShowCreatePost(true)}
+              size="sm"
             >
-              <Plus className="h-4 w-4 mr-2" />
-              New Post
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">New Post</span>
             </Button>
+
+            <div className="border-l border-gray-300 dark:border-gray-600 h-8"></div>
+
+            <LoginArea />
           </div>
         </div>
       </header>

@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { genUserName } from '@/lib/genUserName';
 
 interface CreatePostDialogProps {
   open: boolean;
@@ -20,7 +22,9 @@ export function CreatePostDialog({ open, onOpenChange }: CreatePostDialogProps) 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { publish } = useNostrPublish();
-  const { user } = useCurrentUser();
+  const { user, picture, name } = useCurrentUser();
+
+  const displayName = name || (user?.pubkey ? genUserName(user.pubkey) : 'Anonymous');
 
   const categories = [
     { value: 'bitcoin', label: 'Bitcoin' },
@@ -77,6 +81,20 @@ export function CreatePostDialog({ open, onOpenChange }: CreatePostDialogProps) 
           <DialogDescription>
             Share your thoughts with the Orange Party community on Nostr
           </DialogDescription>
+          {user && (
+            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <Avatar className="w-8 h-8">
+                <AvatarImage src={picture} alt={displayName} />
+                <AvatarFallback>{displayName.charAt(0).toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <p className="text-sm font-medium">Posting as {displayName}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {user.pubkey.substring(0, 16)}...
+                </p>
+              </div>
+            </div>
+          )}
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
