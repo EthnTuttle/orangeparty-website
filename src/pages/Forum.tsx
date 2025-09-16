@@ -198,7 +198,7 @@ const Forum = () => {
 
   const PostCard = ({ post }: { post: Post }) => (
     <div className="space-y-2">
-      <Card className={`border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow ${post.isStickied ? 'border-orange-300 bg-orange-50 dark:bg-orange-900/20' : ''}`}>
+      <Card className={`border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow overflow-hidden ${post.isStickied ? 'border-orange-300 bg-orange-50 dark:bg-orange-900/20' : ''}`}>
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div className="flex-1">
@@ -212,13 +212,13 @@ const Forum = () => {
                   {post.category}
                 </Badge>
               </div>
-              <CardTitle className="text-lg hover:text-orange-600 dark:hover:text-orange-400 cursor-pointer">
+              <CardTitle className="text-lg hover:text-orange-600 dark:hover:text-orange-400 cursor-pointer break-words">
                 {post.title}
               </CardTitle>
               <CardDescription className="flex items-center gap-4 text-sm mt-2">
                 <span className="flex items-center gap-1">
                   <User className="h-3 w-3" />
-                  u/{post.author}
+                  <span className="break-all">u/{post.author}</span>
                 </span>
                 <span className="flex items-center gap-1">
                   <Calendar className="h-3 w-3" />
@@ -229,7 +229,7 @@ const Forum = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <p className="text-gray-600 dark:text-gray-300 mb-4 whitespace-pre-wrap">
+          <p className="text-gray-600 dark:text-gray-300 mb-4 whitespace-pre-wrap break-words overflow-wrap-anywhere">
             {post.content}
           </p>
           <div className="flex items-center justify-between">
@@ -269,16 +269,16 @@ const Forum = () => {
       {post.replies && post.replies.length > 0 && (
         <div className="ml-6 space-y-2 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
           {post.replies.map((reply) => (
-            <Card key={reply.id} className="border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+            <Card key={reply.id} className="border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 overflow-hidden">
               <CardContent className="pt-4">
                 <div className="flex items-center gap-2 mb-2">
                   <User className="h-3 w-3" />
-                  <span className="text-sm font-medium">u/{reply.author}</span>
+                  <span className="text-sm font-medium break-all">u/{reply.author}</span>
                   <span className="text-xs text-gray-500">
                     {formatTimeAgo(reply.timestamp)}
                   </span>
                 </div>
-                <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words overflow-wrap-anywhere">
                   {reply.content}
                 </p>
                 <div className="flex items-center gap-2 mt-2">
