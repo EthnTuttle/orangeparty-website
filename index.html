@@ -10,6 +10,19 @@
     <meta property="og:description" content="The Orange Party represents a peaceful, technology-driven path beyond traditional left-right politics through Bitcoin and free speech." />
     <meta http-equiv="content-security-policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-src 'self' https:; font-src 'self'; base-uri 'self'; manifest-src 'self'; connect-src 'self' blob: https: wss:; img-src 'self' data: blob: https:; media-src 'self' https:">
     <link rel="manifest" href="/manifest.webmanifest">
+    <script type="text/javascript">
+      // GitHub Pages SPA redirect handling
+      (function(l) {
+        if (l.search[1] === '/' ) {
+          var decoded = l.search.slice(1).split('&').map(function(s) {
+            return s.replace(/~and~/g, '&')
+          }).join('?')
+          window.history.replaceState(null, null,
+              l.pathname.slice(0, -1) + decoded + l.hash
+          )
+        }
+      }(window.location))
+    </script>
   </head>
   <body>
     <div id="root"></div>
