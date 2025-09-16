@@ -24,9 +24,11 @@ const Index = () => {
           </div>
           <nav className="flex items-center space-x-3 sm:space-x-6">
             <Link to="/forum" className="text-gray-700 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 hidden sm:block">Forum</Link>
-            <Button variant="outline" size="sm" className="border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900">
-              <Link to="/forum" className="sm:hidden">Forum</Link>
-              <span className="hidden sm:inline">Join Discussion</span>
+            <Button variant="outline" size="sm" className="border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900" asChild>
+              <Link to="/forum">
+                <span className="sm:hidden">Forum</span>
+                <span className="hidden sm:inline">Join Discussion</span>
+              </Link>
             </Button>
           </nav>
         </div>
