@@ -6,11 +6,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowUp, ArrowDown, MessageSquare, Share, Calendar, User, Search, Plus } from 'lucide-react';
+import { MessageSquare, Share, Calendar, User, Search, Plus } from 'lucide-react';
 import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
 import { CreatePostDialog } from '@/components/CreatePostDialog';
 import { ReplyDialog } from '@/components/ReplyDialog';
+import { ReactionCountDisplay } from '@/components/ReactionCountDisplay';
 import { LoginArea } from '@/components/auth/LoginArea';
 import type { NostrEvent } from '@nostrify/nostrify';
 
@@ -234,17 +235,7 @@ const Forum = () => {
           </p>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-1">
-                <Button variant="ghost" size="sm" className="h-8 px-2 hover:bg-green-100 dark:hover:bg-green-900">
-                  <ArrowUp className="h-4 w-4" />
-                </Button>
-                <span className="text-sm font-medium text-green-600 dark:text-green-400 min-w-[2rem] text-center">
-                  {post.upvotes - post.downvotes}
-                </span>
-                <Button variant="ghost" size="sm" className="h-8 px-2 hover:bg-red-100 dark:hover:bg-red-900">
-                  <ArrowDown className="h-4 w-4" />
-                </Button>
-              </div>
+              <ReactionCountDisplay eventId={post.id} />
               <Button
                 variant="ghost"
                 size="sm"
@@ -282,17 +273,7 @@ const Forum = () => {
                   {reply.content}
                 </p>
                 <div className="flex items-center gap-2 mt-2">
-                  <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="sm" className="h-6 px-1 hover:bg-green-100 dark:hover:bg-green-900">
-                      <ArrowUp className="h-3 w-3" />
-                    </Button>
-                    <span className="text-xs text-green-600 dark:text-green-400">
-                      {reply.upvotes - reply.downvotes}
-                    </span>
-                    <Button variant="ghost" size="sm" className="h-6 px-1 hover:bg-red-100 dark:hover:bg-red-900">
-                      <ArrowDown className="h-3 w-3" />
-                    </Button>
-                  </div>
+                  <ReactionCountDisplay eventId={reply.id} size="sm" />
                   <Button
                     variant="ghost"
                     size="sm"
