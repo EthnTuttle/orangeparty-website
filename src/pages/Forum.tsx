@@ -40,6 +40,8 @@ const Forum = () => {
       'd3d74124ddfb5bdc61b8f18d17c3335bbb4f8c71182a35ee27314a49a4eb7b1d', // gary, biz
       '085c56232b428ca56c79e0abc6170a120cd87b01b2e18e30dfdc1fac051d9239', // lexy
       'a44a09581824710735565793993f841d44b36284ab9552ad4a6e124132d1c1f9', // scott
+      '6542d8ac165eed065d28ec345ac5aa58503b20d0feb5ab20a26bb63d875f1ad9', // walker
+      '4d023ce9dfd75a7f3075b8e8e084008be17a1f750c63b5de721e6ef883adc765', // revhodl
     ];
   }, []);
 
@@ -68,6 +70,8 @@ const Forum = () => {
       'd3d74124ddfb5bdc61b8f18d17c3335bbb4f8c71182a35ee27314a49a4eb7b1d': 'gary',
       '085c56232b428ca56c79e0abc6170a120cd87b01b2e18e30dfdc1fac051d9239': 'lexy',
       'a44a09581824710735565793993f841d44b36284ab9552ad4a6e124132d1c1f9': 'scott',
+      '6542d8ac165eed065d28ec345ac5aa58503b20d0feb5ab20a26bb63d875f1ad9': 'walker',
+      '4d023ce9dfd75a7f3075b8e8e084008be17a1f750c63b5de721e6ef883adc765': 'revhodl',
     };
 
     // Convert all events to posts first
