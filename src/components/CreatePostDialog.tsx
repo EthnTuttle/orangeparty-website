@@ -21,7 +21,7 @@ export function CreatePostDialog({ open, onOpenChange }: CreatePostDialogProps) 
   const [category, setCategory] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { publish } = useNostrPublish();
+  const publishMutation = useNostrPublish();
   const { user, picture, name } = useCurrentUser();
 
   const displayName = name || (user?.pubkey ? genUserName(user.pubkey) : 'Anonymous');
@@ -54,7 +54,7 @@ export function CreatePostDialog({ open, onOpenChange }: CreatePostDialogProps) 
         ['client', 'orange-party'], // Client identification
       ];
 
-      await publish({
+      await publishMutation.mutateAsync({
         kind: 1,
         content: fullContent,
         tags,

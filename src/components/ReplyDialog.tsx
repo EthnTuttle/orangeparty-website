@@ -19,7 +19,7 @@ export function ReplyDialog({ open, onOpenChange, parentEventId, parentAuthor }:
   const [content, setContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { publish } = useNostrPublish();
+  const publishMutation = useNostrPublish();
   const { user, picture, name } = useCurrentUser();
 
   const displayName = name || (user?.pubkey ? genUserName(user.pubkey) : 'Anonymous');
@@ -40,7 +40,7 @@ export function ReplyDialog({ open, onOpenChange, parentEventId, parentAuthor }:
         ['client', 'orange-party'], // Client identification
       ];
 
-      await publish({
+      await publishMutation.mutateAsync({
         kind: 1,
         content,
         tags,

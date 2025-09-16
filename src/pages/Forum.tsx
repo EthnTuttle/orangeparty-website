@@ -7,7 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowUp, ArrowDown, MessageSquare, Share, Calendar, User, Search, Plus } from 'lucide-react';
-import { useNostr } from '@/hooks/useNostr';
+import { useNostr } from '@nostrify/react';
+import { useQuery } from '@tanstack/react-query';
 import { CreatePostDialog } from '@/components/CreatePostDialog';
 import { ReplyDialog } from '@/components/ReplyDialog';
 import { LoginArea } from '@/components/auth/LoginArea';
@@ -30,6 +31,8 @@ interface Post {
 }
 
 const Forum = () => {
+  const { nostr } = useNostr();
+
   // Load the Orange Party members from nostr.json
   const orangePartyMembers = useMemo(() => {
     return [
@@ -40,17 +43,25 @@ const Forum = () => {
   }, []);
 
   // Query recent text notes (kind 1) from Orange Party members
-  const { events: nostrEvents } = useNostr({
-    filters: [{
-      kinds: [1], // Text notes
-      authors: orangePartyMembers,
-      limit: 50,
-    }],
+  const { data: nostrEventsData } = useQuery({
+    queryKey: ['forum-posts', orangePartyMembers],
+    queryFn: async () => {
+      const signal = AbortSignal.timeout(5000);
+      const events = await nostr.query([{
+        kinds: [1], // Text notes
+        authors: orangePartyMembers,
+        limit: 50,
+      }], { signal });
+      return events;
+    },
+    enabled: !!nostr,
   });
+
+  const nostrEvents = useMemo(() => nostrEventsData || [], [nostrEventsData]);
 
   // Transform Nostr events into forum posts with threading
   const posts = useMemo(() => {
-    if (!nostrEvents) return [];
+    if (!nostrEvents.length) return [];
 
     const authorMap: Record<string, string> = {
       'd3d74124ddfb5bdc61b8f18d17c3335bbb4f8c71182a35ee27314a49a4eb7b1d': 'gary',
