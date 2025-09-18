@@ -17,7 +17,8 @@ import { useNostrMembers } from '@/hooks/useNostrMembers';
 const Forum = () => {
   // Load Orange Party members and forum posts
   const { data: members } = useNostrMembers();
-  const { data: posts = [], isLoading } = useProcessedForumPosts();
+  const memberPubkeys = members?.map(m => m.pubkey) || [];
+  const { data: posts = [], isLoading } = useProcessedForumPosts(memberPubkeys, members);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');

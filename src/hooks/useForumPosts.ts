@@ -1,6 +1,5 @@
 import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
-import { useNostrMemberPubkeys, getMemberName } from './useNostrMembers';
 import type { NostrEvent } from '@nostrify/nostrify';
 
 export interface ForumPost {
@@ -22,9 +21,8 @@ export interface ForumPost {
   event: NostrEvent;
 }
 
-export function useForumPosts() {
+export function useForumPosts(memberPubkeys: string[]) {
   const { nostr } = useNostr();
-  const memberPubkeys = useNostrMemberPubkeys();
 
   return useQuery({
     queryKey: ['forum-posts', memberPubkeys],
@@ -68,16 +66,14 @@ export function useForumPosts() {
   });
 }
 
-export function useProcessedForumPosts() {
-  const { data: events } = useForumPosts();
-  const { data: members } = useNostrMembers();
+export function useProcessedForumPosts(memberPubkeys: string[], members?: Array<{name: string, pubkey: string}>) {
+  const { data: events } = useForumPosts(memberPubkeys);
 
   return useQuery({
     queryKey: ['processed-forum-posts', events, members],
     queryFn: () => {
       if (!events || !members) return [];
 
-      const memberPubkeys = members.map(m => m.pubkey);
       const memberMap = new Map(members.map(m => [m.pubkey, m.name]));
 
       // Convert events to posts
