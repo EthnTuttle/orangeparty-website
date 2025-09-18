@@ -9,15 +9,13 @@
     <meta property="og:title" content="Orange Party - A Third Way Forward" />
     <meta property="og:description" content="The Orange Party represents a peaceful, technology-driven path beyond traditional left-right politics through Bitcoin and free speech." />
     <script type="text/javascript">
-      // GitHub Pages SPA redirect for project pages (repository.github.io/repository-name/)
-      var pathSegmentsToKeep = 2; // Keep /username/repository-name
+      // GitHub Pages SPA redirect for custom domain
       var l = window.location;
-      var repoSegments = l.pathname.split('/').slice(0, pathSegmentsToKeep);
-      var routeSegments = l.pathname.split('/').slice(pathSegmentsToKeep);
+      var routeSegments = l.pathname.split('/').slice(1); // Remove leading slash
 
       l.replace(
         l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
-        repoSegments.join('/') + '/?/' +
+        '/?/' +
         routeSegments.join('/').replace(/&/g, '~and~') +
         (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
         l.hash
