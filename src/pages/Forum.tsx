@@ -1,166 +1,23 @@
 import { useSeoMeta } from '@unhead/react';
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MessageSquare, Share, Calendar, User, Search, Plus } from 'lucide-react';
-import { useNostr } from '@nostrify/react';
-import { useQuery } from '@tanstack/react-query';
+import { MessageSquare, Share, Calendar, User, Search, Plus, Crown } from 'lucide-react';
 import { CreatePostDialog } from '@/components/CreatePostDialog';
 import { ReplyDialog } from '@/components/ReplyDialog';
 import { ReactionCountDisplay } from '@/components/ReactionCountDisplay';
 import { LoginArea } from '@/components/auth/LoginArea';
-import type { NostrEvent } from '@nostrify/nostrify';
-
-interface Post {
-  id: string;
-  title: string;
-  content: string;
-  author: string;
-  category: string;
-  upvotes: number;
-  downvotes: number;
-  comments: number;
-  timestamp: string;
-  isStickied?: boolean;
-  replies?: Post[];
-  isReply?: boolean;
-  parentId?: string;
-}
+import { useProcessedForumPosts, type ForumPost } from '@/hooks/useForumPosts';
+import { useNostrMembers } from '@/hooks/useNostrMembers';
 
 const Forum = () => {
-  const { nostr } = useNostr();
-
-  // Load the Orange Party members from nostr.json
-  const orangePartyMembers = useMemo(() => {
-    return [
-      'd3d74124ddfb5bdc61b8f18d17c3335bbb4f8c71182a35ee27314a49a4eb7b1d', // gary, biz
-      '085c56232b428ca56c79e0abc6170a120cd87b01b2e18e30dfdc1fac051d9239', // lexy
-      'a44a09581824710735565793993f841d44b36284ab9552ad4a6e124132d1c1f9', // scott
-      '6542d8ac165eed065d28ec345ac5aa58503b20d0feb5ab20a26bb63d875f1ad9', // walker
-      '4d023ce9dfd75a7f3075b8e8e084008be17a1f750c63b5de721e6ef883adc765', // revhodl
-    ];
-  }, []);
-
-  // Query recent text notes (kind 1) from Orange Party members
-  const { data: nostrEventsData } = useQuery({
-    queryKey: ['forum-posts', orangePartyMembers],
-    queryFn: async () => {
-      const signal = AbortSignal.timeout(5000);
-      const events = await nostr.query([{
-        kinds: [1], // Text notes
-        authors: orangePartyMembers,
-        limit: 50,
-      }], { signal });
-      return events;
-    },
-    enabled: !!nostr,
-  });
-
-  const nostrEvents = useMemo(() => nostrEventsData || [], [nostrEventsData]);
-
-  // Transform Nostr events into forum posts with threading
-  const posts = useMemo(() => {
-    if (!nostrEvents.length) return [];
-
-    const authorMap: Record<string, string> = {
-      'd3d74124ddfb5bdc61b8f18d17c3335bbb4f8c71182a35ee27314a49a4eb7b1d': 'gary',
-      '085c56232b428ca56c79e0abc6170a120cd87b01b2e18e30dfdc1fac051d9239': 'lexy',
-      'a44a09581824710735565793993f841d44b36284ab9552ad4a6e124132d1c1f9': 'scott',
-      '6542d8ac165eed065d28ec345ac5aa58503b20d0feb5ab20a26bb63d875f1ad9': 'walker',
-      '4d023ce9dfd75a7f3075b8e8e084008be17a1f750c63b5de721e6ef883adc765': 'revhodl',
-    };
-
-    // Convert all events to posts first
-    const allPosts = nostrEvents.map((event: NostrEvent) => {
-      const content = event.content || '';
-      const firstLine = content.split('\n')[0] || content.substring(0, 100);
-
-      // Check if this is a reply by looking for 'e' tags
-      const replyTags = event.tags?.filter(tag => tag[0] === 'e') || [];
-      const isReply = replyTags.length > 0;
-      const parentId = isReply ? replyTags[0][1] : undefined;
-
-      // Categorize based on topic tags first, then content keywords
-      let category = 'General';
-      const topicTag = event.tags?.find(tag => tag[0] === 't')?.[1];
-      if (topicTag) {
-        category = {
-          'bitcoin': 'Bitcoin',
-          'free-speech': 'Free Speech',
-          'philosophy': 'Philosophy',
-          'technology': 'Technology',
-          'politics': 'Politics',
-          'general': 'General',
-        }[topicTag] || 'General';
-      } else {
-        // Fall back to content-based categorization
-        const lowerContent = content.toLowerCase();
-        if (lowerContent.includes('bitcoin') || lowerContent.includes('btc') || lowerContent.includes('sats')) {
-          category = 'Bitcoin';
-        } else if (lowerContent.includes('free speech') || lowerContent.includes('first amendment') || lowerContent.includes('censorship')) {
-          category = 'Free Speech';
-        } else if (lowerContent.includes('technology') || lowerContent.includes('tech') || lowerContent.includes('innovation')) {
-          category = 'Technology';
-        } else if (lowerContent.includes('politics') || lowerContent.includes('government') || lowerContent.includes('political')) {
-          category = 'Politics';
-        } else if (lowerContent.includes('philosophy') || lowerContent.includes('nihilism') || lowerContent.includes('meaning')) {
-          category = 'Philosophy';
-        }
-      }
-
-      return {
-        id: event.id,
-        title: isReply ? `Re: ${firstLine.substring(0, 60)}...` : (firstLine.length > 80 ? firstLine.substring(0, 80) + '...' : firstLine),
-        content: content,
-        author: authorMap[event.pubkey] || event.pubkey.substring(0, 8),
-        category,
-        upvotes: Math.floor(Math.random() * 200) + 10, // Random for demo
-        downvotes: Math.floor(Math.random() * 20),
-        comments: 0, // Will be calculated
-        timestamp: new Date(event.created_at * 1000).toISOString(),
-        isStickied: false,
-        isReply,
-        parentId,
-        replies: [],
-      };
-    });
-
-    // Build threading structure
-    const topLevelPosts: Post[] = [];
-    const postMap = new Map<string, Post>();
-
-    // First pass: add all posts to map
-    allPosts.forEach(post => {
-      postMap.set(post.id, post);
-    });
-
-    // Second pass: build threading
-    allPosts.forEach(post => {
-      if (post.isReply && post.parentId) {
-        const parent = postMap.get(post.parentId);
-        if (parent) {
-          parent.replies = parent.replies || [];
-          parent.replies.push(post);
-          parent.comments = (parent.replies?.length || 0);
-        }
-      } else {
-        topLevelPosts.push(post);
-      }
-    });
-
-    // Sort top-level posts by date, sort replies within each thread
-    topLevelPosts.forEach(post => {
-      if (post.replies) {
-        post.replies.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-      }
-    });
-
-    return topLevelPosts.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  }, [nostrEvents]);
+  // Load Orange Party members and forum posts
+  const { data: members } = useNostrMembers();
+  const { data: posts = [], isLoading } = useProcessedForumPosts();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -201,7 +58,7 @@ const Forum = () => {
     }
   };
 
-  const PostCard = ({ post }: { post: Post }) => (
+  const PostCard = ({ post }: { post: ForumPost }) => (
     <div className="space-y-2">
       <Card className={`border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow overflow-hidden ${post.isStickied ? 'border-orange-300 bg-orange-50 dark:bg-orange-900/20' : ''}`}>
         <CardHeader className="pb-3">
@@ -222,8 +79,15 @@ const Forum = () => {
               </CardTitle>
               <CardDescription className="flex items-center gap-4 text-sm mt-2">
                 <span className="flex items-center gap-1">
-                  <User className="h-3 w-3" />
-                  <span className="break-all">u/{post.author}</span>
+                  {post.isMemberPost ? (
+                    <Crown className="h-3 w-3 text-orange-500" />
+                  ) : (
+                    <User className="h-3 w-3" />
+                  )}
+                  <span className="break-all">
+                    {post.isMemberPost ? '🍊' : '👤'}{post.authorName}
+                    {post.isMemberPost && <span className="text-orange-600 dark:text-orange-400 text-xs ml-1">(Member)</span>}
+                  </span>
                 </span>
                 <span className="flex items-center gap-1">
                   <Calendar className="h-3 w-3" />
@@ -267,8 +131,15 @@ const Forum = () => {
             <Card key={reply.id} className="border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 overflow-hidden">
               <CardContent className="pt-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <User className="h-3 w-3" />
-                  <span className="text-sm font-medium break-all">u/{reply.author}</span>
+                  {reply.isMemberPost ? (
+                    <Crown className="h-3 w-3 text-orange-500" />
+                  ) : (
+                    <User className="h-3 w-3" />
+                  )}
+                  <span className="text-sm font-medium break-all">
+                    {reply.isMemberPost ? '🍊' : '👤'}{reply.authorName}
+                    {reply.isMemberPost && <span className="text-orange-600 dark:text-orange-400 text-xs ml-1">(Member)</span>}
+                  </span>
                   <span className="text-xs text-gray-500">
                     {formatTimeAgo(reply.timestamp)}
                   </span>
@@ -339,6 +210,16 @@ const Forum = () => {
                 <p className="text-gray-600 dark:text-gray-300 mb-4">
                   Real discussions from Orange Party members on Nostr. Exploring Bitcoin, free speech, and peaceful solutions to societal challenges.
                 </p>
+                <div className="mb-4">
+                  <p className="text-gray-600 dark:text-gray-300 mb-2 font-medium">Current Members:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {members?.map((member) => (
+                      <Badge key={member.pubkey} variant="outline" className="text-xs">
+                        🍊 {member.name}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
                 <Badge variant="secondary" className="mb-2 bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
                   Live Nostr Feed
                 </Badge>
@@ -391,7 +272,7 @@ const Forum = () => {
 
             {/* Posts */}
             <div className="space-y-4">
-              {!nostrEvents ? (
+              {isLoading ? (
                 <Card className="border-gray-200 dark:border-gray-700">
                   <CardContent className="text-center py-12">
                     <div className="animate-pulse">
