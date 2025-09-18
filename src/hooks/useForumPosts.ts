@@ -76,13 +76,13 @@ export function useForumPosts(memberPubkeys: string[]) {
 export function useProcessedForumPosts(
   memberPubkeys: string[], 
   members?: Array<{name: string, pubkey: string}>,
-  options?: { enabled?: boolean }
+  _options?: { enabled?: boolean }
 ) {
   const { data: events, isLoading: eventsLoading } = useForumPosts(memberPubkeys);
   const [processedPosts, setProcessedPosts] = useState<ForumPost[]>([]);
   
   // Memoize memberPubkeys to prevent infinite loops
-  const stableMemberPubkeys = useMemo(() => memberPubkeys, [memberPubkeys.join(',')]);
+  const stableMemberPubkeys = useMemo(() => memberPubkeys, [memberPubkeys]);
 
   // Process posts when data changes
   useEffect(() => {

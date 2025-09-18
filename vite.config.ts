@@ -4,7 +4,7 @@ import react from "@vitejs/plugin-react-swc";
 import { defineConfig } from "vitest/config";
 
 // https://vitejs.dev/config/
-export default defineConfig(({ command }) => ({
+export default defineConfig(({ command: _command }) => ({
   base: '/',
   server: {
     host: "::",

@@ -179,7 +179,7 @@ const Forum = () => {
         {/* Threaded Replies - Only show when expanded */}
         {hasReplies && isExpanded && (
           <div className="ml-6 space-y-2 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
-            {post.replies.map((reply) => (
+            {post.replies?.map((reply) => (
               <Card key={reply.id} className="border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 overflow-hidden">
                 <CardContent className="pt-4">
                   <div className="flex items-center gap-2 mb-2">
