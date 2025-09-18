@@ -28,9 +28,15 @@ const Forum = () => {
   console.log('Members loaded:', members);
   console.log('Member pubkeys:', memberPubkeys);
   console.log('Posts loaded:', posts.length);
+  console.log('Unique authors in posts:', [...new Set(posts.map(p => p.authorName))]);
+  console.log('Top-level posts by author:', posts.reduce((acc, post) => {
+    acc[post.authorName] = (acc[post.authorName] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>));
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedUser, setSelectedUser] = useState('all');
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
   const [replyDialog, setReplyDialog] = useState<{ open: boolean; parentEventId: string; parentAuthor: string }>({
@@ -45,7 +51,8 @@ const Forum = () => {
     const matchesSearch = post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          post.content.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || post.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+    const matchesUser = selectedUser === 'all' || post.authorName === selectedUser;
+    return matchesSearch && matchesCategory && matchesUser;
   });
 
   useSeoMeta({
@@ -273,6 +280,35 @@ const Forum = () => {
               </CardContent>
             </Card>
 
+            <Card className="border-gray-200 dark:border-gray-700 mb-6">
+              <CardHeader>
+                <CardTitle className="text-lg">Filter by Member</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm">
+                <div className="space-y-2">
+                  <Button
+                    variant={selectedUser === 'all' ? 'default' : 'outline'}
+                    size="sm"
+                    className="w-full justify-start"
+                    onClick={() => setSelectedUser('all')}
+                  >
+                    All Members
+                  </Button>
+                  {members?.map((member) => (
+                    <Button
+                      key={member.pubkey}
+                      variant={selectedUser === member.name ? 'default' : 'outline'}
+                      size="sm"
+                      className="w-full justify-start"
+                      onClick={() => setSelectedUser(member.name)}
+                    >
+                      🍊 {member.name}
+                    </Button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
             <Card className="border-gray-200 dark:border-gray-700">
               <CardHeader>
                 <CardTitle className="text-lg">Forum Rules</CardTitle>
@@ -313,6 +349,23 @@ const Forum = () => {
                 </TabsList>
               </Tabs>
             </div>
+
+            {/* Debug Info */}
+            {process.env.NODE_ENV === 'development' && (
+              <Card className="border-yellow-200 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/20 mb-4">
+                <CardContent className="py-4">
+                  <div className="text-sm">
+                    <p><strong>Debug Info:</strong></p>
+                    <p>Total posts: {posts.length}</p>
+                    <p>Unique authors: {[...new Set(posts.map(p => p.authorName))].join(', ')}</p>
+                    <p>Posts by author: {JSON.stringify(posts.reduce((acc, post) => {
+                      acc[post.authorName] = (acc[post.authorName] || 0) + 1;
+                      return acc;
+                    }, {} as Record<string, number>), null, 2)}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Posts */}
             <div className="space-y-4">
