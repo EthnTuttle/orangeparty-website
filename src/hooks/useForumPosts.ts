@@ -1,5 +1,6 @@
 import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import type { NostrEvent } from '@nostrify/nostrify';
 
 export interface ForumPost {
@@ -79,12 +80,20 @@ export function useProcessedForumPosts(
 ) {
   const { data: events, isLoading: eventsLoading } = useForumPosts(memberPubkeys);
 
-  const result = useQuery({
-    queryKey: ['processed-forum-posts', events, members],
-    queryFn: () => {
-      if (!events || !members) return [];
+  // Process posts directly without useQuery to avoid circular dependency
+  const processedPosts = useMemo(() => {
+    if (!events || !members || events.length === 0) {
+      console.log('Missing data for processing:', { events: !!events, members: !!members, eventsLength: events?.length });
+      return [];
+    }
 
-      const memberMap = new Map(members.map(m => [m.pubkey, m.name]));
+    console.log('Starting post processing with:', { 
+      eventsCount: events.length, 
+      membersCount: members.length,
+      memberPubkeys: memberPubkeys.length 
+    });
+
+    const memberMap = new Map(members.map(m => [m.pubkey, m.name]));
 
       // Convert events to posts
       const allPosts: ForumPost[] = events.map((event: NostrEvent) => {
@@ -201,12 +210,10 @@ export function useProcessedForumPosts(
       });
       
       return sortedPosts;
-    },
-    enabled: (options?.enabled ?? true) && !!events && !!members && memberPubkeys.length > 0,
-  });
+    }, [events, members, memberPubkeys]);
   
   return {
-    ...result,
-    isLoading: eventsLoading || result.isLoading,
+    data: processedPosts,
+    isLoading: eventsLoading,
   };
 }
