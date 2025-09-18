@@ -7,7 +7,7 @@ import { NIP19Page } from "./pages/NIP19Page";
 import NotFound from "./pages/NotFound";
 
 export function AppRouter() {
-  const basename = import.meta.env.PROD ? '/orangeparty-website' : '';
+  const basename = '';
 
   return (
     <BrowserRouter basename={basename}>
