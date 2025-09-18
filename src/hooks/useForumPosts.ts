@@ -98,6 +98,15 @@ export function useProcessedForumPosts(
 
         // Check if this is a member post
         const isMemberPost = memberPubkeys.includes(event.pubkey);
+        
+        // Debug logging for each post
+        console.log('Processing event:', {
+          id: event.id.substring(0, 8),
+          pubkey: event.pubkey.substring(0, 8),
+          isMemberPost,
+          authorName: memberMap.get(event.pubkey) || 'unknown',
+          content: content.substring(0, 50) + '...'
+        });
 
         // Categorize based on topic tags first, then content keywords
         let category = 'General';
@@ -178,11 +187,20 @@ export function useProcessedForumPosts(
       });
 
       // Sort by member posts first, then by date
-      return topLevelPosts.sort((a, b) => {
+      const sortedPosts = topLevelPosts.sort((a, b) => {
         if (a.isMemberPost && !b.isMemberPost) return -1;
         if (!a.isMemberPost && b.isMemberPost) return 1;
         return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
       });
+      
+      console.log('Final processed posts:', {
+        total: sortedPosts.length,
+        memberPosts: sortedPosts.filter(p => p.isMemberPost).length,
+        authors: [...new Set(sortedPosts.map(p => p.authorName))],
+        topLevelPosts: topLevelPosts.length
+      });
+      
+      return sortedPosts;
     },
     enabled: (options?.enabled ?? true) && !!events && !!members && memberPubkeys.length > 0,
   });
