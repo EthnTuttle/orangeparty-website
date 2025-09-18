@@ -27,8 +27,12 @@ export function useForumPosts(memberPubkeys: string[]) {
   return useQuery({
     queryKey: ['forum-posts', memberPubkeys],
     queryFn: async () => {
-      if (!nostr || memberPubkeys.length === 0) return [];
+      if (!nostr || memberPubkeys.length === 0) {
+        console.log('No nostr or no member pubkeys:', { nostr: !!nostr, memberPubkeys });
+        return [];
+      }
 
+      console.log('Querying for member pubkeys:', memberPubkeys);
       const signal = AbortSignal.timeout(10000);
       
       // Query for posts from members
@@ -37,6 +41,8 @@ export function useForumPosts(memberPubkeys: string[]) {
         authors: memberPubkeys,
         limit: 100,
       }], { signal });
+      
+      console.log('Member events found:', memberEvents.length);
 
       // Query for replies to member posts (from anyone)
       const memberPostIds = memberEvents.map(event => event.id);
