@@ -72,7 +72,11 @@ export function useForumPosts(memberPubkeys: string[]) {
   });
 }
 
-export function useProcessedForumPosts(memberPubkeys: string[], members?: Array<{name: string, pubkey: string}>) {
+export function useProcessedForumPosts(
+  memberPubkeys: string[], 
+  members?: Array<{name: string, pubkey: string}>,
+  options?: { enabled?: boolean }
+) {
   const { data: events, isLoading: eventsLoading } = useForumPosts(memberPubkeys);
 
   const result = useQuery({
@@ -180,7 +184,7 @@ export function useProcessedForumPosts(memberPubkeys: string[], members?: Array<
         return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
       });
     },
-    enabled: !!events && !!members,
+    enabled: (options?.enabled ?? true) && !!events && !!members && memberPubkeys.length > 0,
   });
   
   return {

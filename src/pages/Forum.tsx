@@ -18,7 +18,11 @@ const Forum = () => {
   // Load Orange Party members and forum posts
   const { data: members, isLoading: membersLoading } = useNostrMembers();
   const memberPubkeys = members?.map(m => m.pubkey) || [];
-  const { data: posts = [], isLoading } = useProcessedForumPosts(memberPubkeys, members);
+  const { data: posts = [], isLoading } = useProcessedForumPosts(
+    memberPubkeys, 
+    members,
+    { enabled: !!members && memberPubkeys.length > 0 }
+  );
 
   // Debug logging
   console.log('Members loaded:', members);
@@ -278,7 +282,7 @@ const Forum = () => {
 
             {/* Posts */}
             <div className="space-y-4">
-              {isLoading ? (
+              {isLoading || membersLoading ? (
                 <Card className="border-gray-200 dark:border-gray-700">
                   <CardContent className="text-center py-12">
                     <div className="animate-pulse">
