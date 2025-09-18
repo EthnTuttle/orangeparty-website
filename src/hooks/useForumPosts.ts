@@ -1,6 +1,6 @@
 import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import type { NostrEvent } from '@nostrify/nostrify';
 
 export interface ForumPost {
@@ -79,10 +79,11 @@ export function useProcessedForumPosts(
   options?: { enabled?: boolean }
 ) {
   const { data: events, isLoading: eventsLoading } = useForumPosts(memberPubkeys);
+  const [processedPosts, setProcessedPosts] = useState<ForumPost[]>([]);
 
-  // Process posts directly without useQuery to avoid circular dependency
-  const processedPosts = useMemo(() => {
-    console.log('useMemo triggered with:', { 
+  // Process posts when data changes
+  useEffect(() => {
+    console.log('useEffect triggered with:', { 
       events: !!events, 
       members: !!members, 
       eventsLength: events?.length,
@@ -92,16 +93,17 @@ export function useProcessedForumPosts(
     
     if (!events || !members || events.length === 0) {
       console.log('Missing data for processing:', { events: !!events, members: !!members, eventsLength: events?.length });
-      return [];
+      setProcessedPosts([]);
+      return;
     }
 
-      console.log('Starting post processing with:', { 
-        eventsCount: events.length, 
-        membersCount: members.length,
-        memberPubkeys: memberPubkeys.length 
-      });
+    console.log('Starting post processing with:', { 
+      eventsCount: events.length, 
+      membersCount: members.length,
+      memberPubkeys: memberPubkeys.length 
+    });
 
-      const memberMap = new Map(members.map(m => [m.pubkey, m.name]));
+    const memberMap = new Map(members.map(m => [m.pubkey, m.name]));
 
       // Convert events to posts
       const allPosts: ForumPost[] = events.map((event: NostrEvent) => {
@@ -208,7 +210,7 @@ export function useProcessedForumPosts(
         topLevelPosts: topLevelPosts.length
       });
       
-      return sortedPosts;
+      setProcessedPosts(sortedPosts);
     }, [events, members, memberPubkeys]);
   
   return {
