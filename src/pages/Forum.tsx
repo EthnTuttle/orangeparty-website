@@ -25,14 +25,16 @@ const Forum = () => {
   );
 
   // Debug logging
-  console.log('Members loaded:', members);
-  console.log('Member pubkeys:', memberPubkeys);
-  console.log('Posts loaded:', posts.length);
-  console.log('Unique authors in posts:', [...new Set(posts.map(p => p.authorName))]);
-  console.log('Top-level posts by author:', posts.reduce((acc, post) => {
-    acc[post.authorName] = (acc[post.authorName] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>));
+  console.log('Forum state:', {
+    membersLoaded: !!members,
+    memberCount: members?.length || 0,
+    postsLoaded: posts.length,
+    uniqueAuthors: [...new Set(posts.map(p => p.authorName))],
+    postsByAuthor: posts.reduce((acc, post) => {
+      acc[post.authorName] = (acc[post.authorName] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>)
+  });
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -350,22 +352,6 @@ const Forum = () => {
               </Tabs>
             </div>
 
-            {/* Debug Info */}
-            {process.env.NODE_ENV === 'development' && (
-              <Card className="border-yellow-200 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/20 mb-4">
-                <CardContent className="py-4">
-                  <div className="text-sm">
-                    <p><strong>Debug Info:</strong></p>
-                    <p>Total posts: {posts.length}</p>
-                    <p>Unique authors: {[...new Set(posts.map(p => p.authorName))].join(', ')}</p>
-                    <p>Posts by author: {JSON.stringify(posts.reduce((acc, post) => {
-                      acc[post.authorName] = (acc[post.authorName] || 0) + 1;
-                      return acc;
-                    }, {} as Record<string, number>), null, 2)}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
 
             {/* Posts */}
             <div className="space-y-4">

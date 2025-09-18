@@ -82,18 +82,26 @@ export function useProcessedForumPosts(
 
   // Process posts directly without useQuery to avoid circular dependency
   const processedPosts = useMemo(() => {
+    console.log('useMemo triggered with:', { 
+      events: !!events, 
+      members: !!members, 
+      eventsLength: events?.length,
+      membersLength: members?.length,
+      memberPubkeysLength: memberPubkeys.length
+    });
+    
     if (!events || !members || events.length === 0) {
       console.log('Missing data for processing:', { events: !!events, members: !!members, eventsLength: events?.length });
       return [];
     }
 
-    console.log('Starting post processing with:', { 
-      eventsCount: events.length, 
-      membersCount: members.length,
-      memberPubkeys: memberPubkeys.length 
-    });
+      console.log('Starting post processing with:', { 
+        eventsCount: events.length, 
+        membersCount: members.length,
+        memberPubkeys: memberPubkeys.length 
+      });
 
-    const memberMap = new Map(members.map(m => [m.pubkey, m.name]));
+      const memberMap = new Map(members.map(m => [m.pubkey, m.name]));
 
       // Convert events to posts
       const allPosts: ForumPost[] = events.map((event: NostrEvent) => {
@@ -107,15 +115,6 @@ export function useProcessedForumPosts(
 
         // Check if this is a member post
         const isMemberPost = memberPubkeys.includes(event.pubkey);
-        
-        // Debug logging for each post
-        console.log('Processing event:', {
-          id: event.id.substring(0, 8),
-          pubkey: event.pubkey.substring(0, 8),
-          isMemberPost,
-          authorName: memberMap.get(event.pubkey) || 'unknown',
-          content: content.substring(0, 50) + '...'
-        });
 
         // Categorize based on topic tags first, then content keywords
         let category = 'General';
