@@ -304,16 +304,6 @@ const Forum = () => {
               )}
             </div>
 
-            {/* Pagination placeholder */}
-            <div className="flex justify-center mt-8">
-              <div className="flex space-x-2">
-                <Button variant="outline" disabled>Previous</Button>
-                <Button variant="outline" className="bg-orange-500 text-white">1</Button>
-                <Button variant="outline">2</Button>
-                <Button variant="outline">3</Button>
-                <Button variant="outline">Next</Button>
-              </div>
-            </div>
           </div>
         </div>
       </div>

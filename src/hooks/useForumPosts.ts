@@ -67,9 +67,9 @@ export function useForumPosts(memberPubkeys: string[]) {
 }
 
 export function useProcessedForumPosts(memberPubkeys: string[], members?: Array<{name: string, pubkey: string}>) {
-  const { data: events } = useForumPosts(memberPubkeys);
+  const { data: events, isLoading: eventsLoading } = useForumPosts(memberPubkeys);
 
-  return useQuery({
+  const result = useQuery({
     queryKey: ['processed-forum-posts', events, members],
     queryFn: () => {
       if (!events || !members) return [];
@@ -122,7 +122,7 @@ export function useProcessedForumPosts(memberPubkeys: string[], members?: Array<
           title: isReply ? `Re: ${firstLine.substring(0, 60)}...` : (firstLine.length > 80 ? firstLine.substring(0, 80) + '...' : firstLine),
           content: content,
           author: event.pubkey,
-          authorName: getMemberName(event.pubkey, members),
+          authorName: memberMap.get(event.pubkey) || event.pubkey.substring(0, 8),
           category,
           upvotes: Math.floor(Math.random() * 200) + 10, // Random for demo
           downvotes: Math.floor(Math.random() * 20),
@@ -176,4 +176,9 @@ export function useProcessedForumPosts(memberPubkeys: string[], members?: Array<
     },
     enabled: !!events && !!members,
   });
+  
+  return {
+    ...result,
+    isLoading: eventsLoading || result.isLoading,
+  };
 }
