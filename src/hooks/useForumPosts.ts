@@ -80,6 +80,9 @@ export function useProcessedForumPosts(
 ) {
   const { data: events, isLoading: eventsLoading } = useForumPosts(memberPubkeys);
   const [processedPosts, setProcessedPosts] = useState<ForumPost[]>([]);
+  
+  // Memoize memberPubkeys to prevent infinite loops
+  const stableMemberPubkeys = useMemo(() => memberPubkeys, [memberPubkeys.join(',')]);
 
   // Process posts when data changes
   useEffect(() => {
@@ -88,7 +91,7 @@ export function useProcessedForumPosts(
       members: !!members, 
       eventsLength: events?.length,
       membersLength: members?.length,
-      memberPubkeysLength: memberPubkeys.length
+      memberPubkeysLength: stableMemberPubkeys.length
     });
     
     if (!events || !members || events.length === 0) {
@@ -100,7 +103,7 @@ export function useProcessedForumPosts(
     console.log('Starting post processing with:', { 
       eventsCount: events.length, 
       membersCount: members.length,
-      memberPubkeys: memberPubkeys.length 
+      memberPubkeys: stableMemberPubkeys.length 
     });
 
     const memberMap = new Map(members.map(m => [m.pubkey, m.name]));
@@ -116,7 +119,7 @@ export function useProcessedForumPosts(
         const parentId = isReply ? replyTags[0][1] : undefined;
 
         // Check if this is a member post
-        const isMemberPost = memberPubkeys.includes(event.pubkey);
+        const isMemberPost = stableMemberPubkeys.includes(event.pubkey);
 
         // Categorize based on topic tags first, then content keywords
         let category = 'General';
@@ -211,7 +214,7 @@ export function useProcessedForumPosts(
       });
       
       setProcessedPosts(sortedPosts);
-    }, [events, members, memberPubkeys]);
+    }, [events, members, stableMemberPubkeys]);
   
   return {
     data: processedPosts,
