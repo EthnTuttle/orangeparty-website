@@ -1,5 +1,5 @@
 import { useNostr } from "@nostrify/react";
-import { useMutation, type UseMutationResult } from "@tanstack/react-query";
+import { useMutation, useQueryClient, type UseMutationResult } from "@tanstack/react-query";
 
 import { useCurrentUser } from "./useCurrentUser";
 
@@ -8,6 +8,7 @@ import type { NostrEvent } from "@nostrify/nostrify";
 export function useNostrPublish(): UseMutationResult<NostrEvent, Error, Omit<NostrEvent, 'id' | 'pubkey' | 'sig' | 'created_at' | 'tags'> & { created_at?: number; tags?: string[][] }> {
   const { nostr } = useNostr();
   const { user } = useCurrentUser();
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (t: Omit<NostrEvent, 'id' | 'pubkey' | 'sig' | 'created_at' | 'tags'> & { created_at?: number; tags?: string[][] }) => {
@@ -37,6 +38,8 @@ export function useNostrPublish(): UseMutationResult<NostrEvent, Error, Omit<Nos
     },
     onSuccess: (data) => {
       console.log("Event published successfully:", data);
+      // Invalidate forum posts queries to refresh the feed
+      queryClient.invalidateQueries({ queryKey: ['forum-posts'] });
     },
   });
 }
