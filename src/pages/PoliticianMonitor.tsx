@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 
 import { MessageSquare, Share, Calendar, User, Search, Plus, Crown, ChevronDown, ChevronRight, MoreVertical, Eye, Monitor } from 'lucide-react';
 import { ReactionCountDisplay } from '@/components/ReactionCountDisplay';
+import { ReferencedEventCard } from '@/components/ReferencedEventCard';
 import { LoginArea } from '@/components/auth/LoginArea';
 import { useProcessedForumPosts, type ForumPost } from '@/hooks/useForumPosts';
 import { useMemo } from 'react';
@@ -32,6 +33,7 @@ const PoliticianMonitor = () => {
   const politicianMonitorPubkey = '8dacfe2a58663e3cc6f2de1f2aa651093549524d052d3926823376268ba8d974';
   const memberPubkeys = useMemo(() => [politicianMonitorPubkey], []);
   const members = useMemo(() => [{ name: 'politicianMonitor', pubkey: politicianMonitorPubkey }], []);
+  const memberMap = useMemo(() => new Map([[politicianMonitorPubkey, 'politicianMonitor']]), []);
 
   const { data: posts = [], isLoading } = useProcessedForumPosts(
     memberPubkeys,
@@ -221,6 +223,23 @@ const PoliticianMonitor = () => {
                 )}
               </div>
             )}
+
+            {/* Referenced Events Display for Top-Level Posts */}
+            {post.referencedEvents && post.referencedEvents.length > 0 && (
+              <div className="mb-4 space-y-2">
+                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Referenced Events:
+                </h4>
+                {post.referencedEvents.map((referencedEvent) => (
+                  <ReferencedEventCard
+                    key={referencedEvent.id}
+                    event={referencedEvent}
+                    memberMap={memberMap}
+                  />
+                ))}
+              </div>
+            )}
+
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <ReactionCountDisplay eventId={post.id} />

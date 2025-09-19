@@ -54,18 +54,8 @@ const Index = () => {
             <Button size="lg" className="bg-orange-500 hover:bg-orange-600 text-white">
               <Link to="/forum">Join the Discussion</Link>
             </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900"
-              onClick={() => {
-                document.getElementById('core-principles')?.scrollIntoView({
-                  behavior: 'smooth',
-                  block: 'start'
-                });
-              }}
-            >
-              Learn More
+            <Button size="lg" variant="outline" className="border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900" asChild>
+              <Link to="/resources">Learn More</Link>
             </Button>
           </div>
         </div>

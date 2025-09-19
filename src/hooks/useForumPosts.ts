@@ -28,6 +28,26 @@ function extractMediaUrls(content: string): { images: string[]; videos: string[]
   return { images, videos };
 }
 
+// Extract nevent IDs from content
+function extractNeventIds(content: string): string[] {
+  const neventRegex = /(nevent1[0-9a-z]+)/gi;
+  const matches = content.match(neventRegex) || [];
+  const eventIds: string[] = [];
+
+  for (const match of matches) {
+    try {
+      const decoded = nip19.decode(match);
+      if (decoded.type === 'nevent') {
+        eventIds.push(decoded.data.id);
+      }
+    } catch (error) {
+      console.warn('Failed to decode nevent:', match, error);
+    }
+  }
+
+  return [...new Set(eventIds)]; // Remove duplicates
+}
+
 // Nostr identifier processing utility
 function processNostrIdentifiers(content: string, memberMap: Map<string, string>): string {
   // Match nevent, nprofile, npub, note identifiers
@@ -87,6 +107,7 @@ export interface ForumPost {
     images: string[];
     videos: string[];
   };
+  referencedEvents?: NostrEvent[];
 }
 
 export function useForumPosts(memberPubkeys: string[], includeNonTagged: boolean = false) {
@@ -101,39 +122,57 @@ export function useForumPosts(memberPubkeys: string[], includeNonTagged: boolean
 
       const signal = AbortSignal.timeout(15000); // Increased timeout
 
+      // TheOrangeParty special pubkey that always shows regardless of tags
+      const theOrangePartyPubkey = '6542d8ac165eed065d28ec345ac5aa58503b20d0feb5ab20a26bb63d875f1ad9';
+      const regularMemberPubkeys = memberPubkeys.filter(pubkey => pubkey !== theOrangePartyPubkey);
+
       // Run queries in parallel
       const queries = [
-        // Query for text posts from Orange Party members with #orangeparty tag
+        // Query for text posts from regular Orange Party members with #orangeparty tag
         nostr.query([{
           kinds: [1], // Text notes only
-          authors: memberPubkeys,
+          authors: regularMemberPubkeys,
           '#t': ['orangeparty'],
           limit: 150,
         }], { signal }),
 
-        // Query for long-form content from Orange Party members with #orangeparty tag
+        // Query for long-form content from regular Orange Party members with #orangeparty tag
         nostr.query([{
           kinds: [30023], // Long-form content
-          authors: memberPubkeys,
+          authors: regularMemberPubkeys,
           '#t': ['orangeparty'],
           limit: 50,
         }], { signal }),
+
+        // Special query for TheOrangeParty - ALWAYS show their posts regardless of tags
+        ...(memberPubkeys.includes(theOrangePartyPubkey) ? [
+          nostr.query([{
+            kinds: [1], // Text notes
+            authors: [theOrangePartyPubkey],
+            limit: 100,
+          }], { signal }),
+          nostr.query([{
+            kinds: [30023], // Long-form content
+            authors: [theOrangePartyPubkey],
+            limit: 30,
+          }], { signal })
+        ] : []),
       ];
 
-      // Add non-tagged queries if enabled
+      // Add non-tagged queries if enabled (excluding TheOrangeParty since they're always shown)
       if (includeNonTagged) {
         queries.push(
-          // Query for text posts from Orange Party members WITHOUT #orangeparty tag
+          // Query for text posts from regular Orange Party members WITHOUT #orangeparty tag
           nostr.query([{
             kinds: [1],
-            authors: memberPubkeys,
+            authors: regularMemberPubkeys,
             limit: 100,
           }], { signal }),
 
-          // Query for long-form content from Orange Party members WITHOUT #orangeparty tag
+          // Query for long-form content from regular Orange Party members WITHOUT #orangeparty tag
           nostr.query([{
             kinds: [30023],
-            authors: memberPubkeys,
+            authors: regularMemberPubkeys,
             limit: 30,
           }], { signal })
         );
@@ -155,8 +194,58 @@ export function useForumPosts(memberPubkeys: string[], includeNonTagged: boolean
         limit: 300,
       }], { signal }) : [];
 
+      // Extract nevent IDs from top-level member posts (not replies)
+      const topLevelMemberPosts = [...memberTextEvents, ...memberLongFormEvents, ...nonTaggedTextEvents, ...nonTaggedLongFormEvents];
+      const neventIds = new Set<string>();
+
+      topLevelMemberPosts.forEach(event => {
+        const eventIds = extractNeventIds(event.content);
+        eventIds.forEach(id => neventIds.add(id));
+      });
+
+      // Query for referenced events with depth limit to prevent inception
+      const referencedEvents: NostrEvent[] = [];
+      let currentNeventIds = neventIds;
+      let depth = 0;
+      const maxDepth = 3;
+      const allFetchedIds = new Set<string>();
+
+      while (currentNeventIds.size > 0 && depth < maxDepth) {
+        // Filter out already fetched IDs
+        const newIds = Array.from(currentNeventIds).filter(id => !allFetchedIds.has(id));
+        if (newIds.length === 0) break;
+
+        // Fetch events at current depth
+        const depthEvents = await nostr.query([{
+          kinds: [1, 30023], // Text notes and long-form content
+          ids: newIds,
+          limit: 50,
+        }], { signal });
+
+        referencedEvents.push(...depthEvents);
+
+        // Track fetched IDs
+        depthEvents.forEach(event => allFetchedIds.add(event.id));
+
+        // Extract nevents from newly fetched events for next depth level
+        const nextNeventIds = new Set<string>();
+        depthEvents.forEach(event => {
+          const eventIds = extractNeventIds(event.content);
+          eventIds.forEach(id => {
+            if (!allFetchedIds.has(id)) {
+              nextNeventIds.add(id);
+            }
+          });
+        });
+
+        currentNeventIds = nextNeventIds;
+        depth++;
+      }
+
+      console.log('Referenced events found:', referencedEvents.length, 'from', neventIds.size, 'initial nevent references, depth:', depth);
+
       // Combine all events and deduplicate
-      const allEvents = [...memberTextEvents, ...memberLongFormEvents, ...nonTaggedTextEvents, ...nonTaggedLongFormEvents, ...replyEvents];
+      const allEvents = [...memberTextEvents, ...memberLongFormEvents, ...nonTaggedTextEvents, ...nonTaggedLongFormEvents, ...replyEvents, ...referencedEvents];
       const uniqueEvents = allEvents.filter((event, index, self) =>
         index === self.findIndex(e => e.id === event.id)
       );
@@ -238,6 +327,15 @@ export function useProcessedForumPosts(
         // Extract media URLs for top-level posts only (not replies)
         const mediaUrls = !isReply ? extractMediaUrls(content) : undefined;
 
+        // Extract referenced events for top-level posts only (not replies)
+        let referencedEvents: NostrEvent[] | undefined = undefined;
+        if (!isReply) {
+          const neventIds = extractNeventIds(event.content);
+          if (neventIds.length > 0) {
+            referencedEvents = events.filter(e => neventIds.includes(e.id));
+          }
+        }
+
         // Categorize based on topic tags first, then content keywords
         let category = 'General';
         const topicTag = event.tags?.find(tag => tag[0] === 't')?.[1];
@@ -284,6 +382,7 @@ export function useProcessedForumPosts(
           isMemberPost,
           event,
           mediaUrls,
+          referencedEvents,
         };
       });
 

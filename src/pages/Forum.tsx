@@ -15,6 +15,7 @@ import { MessageSquare, Share, Calendar, User, Search, Plus, Crown, ChevronDown,
 import { CreatePostDialog } from '@/components/CreatePostDialog';
 import { ReplyDialog } from '@/components/ReplyDialog';
 import { ReactionCountDisplay } from '@/components/ReactionCountDisplay';
+import { ReferencedEventCard } from '@/components/ReferencedEventCard';
 import { LoginArea } from '@/components/auth/LoginArea';
 import { useProcessedForumPosts, type ForumPost } from '@/hooks/useForumPosts';
 import { useNostrMembers } from '@/hooks/useNostrMembers';
@@ -29,6 +30,7 @@ const Forum = () => {
   // Load Orange Party members and forum posts
   const { data: members, isLoading: membersLoading } = useNostrMembers();
   const memberPubkeys = useMemo(() => members?.map(m => m.pubkey) || [], [members]);
+  const memberMap = useMemo(() => new Map(members?.map(m => [m.pubkey, m.name]) || []), [members]);
   const { data: posts = [], isLoading } = useProcessedForumPosts(
     memberPubkeys,
     members,
@@ -242,6 +244,23 @@ const Forum = () => {
                 )}
               </div>
             )}
+
+            {/* Referenced Events Display for Top-Level Posts */}
+            {post.referencedEvents && post.referencedEvents.length > 0 && (
+              <div className="mb-4 space-y-2">
+                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Referenced Events:
+                </h4>
+                {post.referencedEvents.map((referencedEvent) => (
+                  <ReferencedEventCard
+                    key={referencedEvent.id}
+                    event={referencedEvent}
+                    memberMap={memberMap}
+                  />
+                ))}
+              </div>
+            )}
+
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <ReactionCountDisplay eventId={post.id} />
