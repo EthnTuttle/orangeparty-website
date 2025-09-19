@@ -11,41 +11,33 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 
-import { MessageSquare, Share, Calendar, User, Search, Plus, Crown, ChevronDown, ChevronRight, MoreVertical, Eye } from 'lucide-react';
-import { CreatePostDialog } from '@/components/CreatePostDialog';
-import { ReplyDialog } from '@/components/ReplyDialog';
+import { MessageSquare, Share, Calendar, User, Search, Plus, Crown, ChevronDown, ChevronRight, MoreVertical, Eye, Monitor } from 'lucide-react';
 import { ReactionCountDisplay } from '@/components/ReactionCountDisplay';
 import { LoginArea } from '@/components/auth/LoginArea';
 import { useProcessedForumPosts, type ForumPost } from '@/hooks/useForumPosts';
-import { useNostrMembers } from '@/hooks/useNostrMembers';
 import { useMemo } from 'react';
 
-const Forum = () => {
+const PoliticianMonitor = () => {
   // State declarations first
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedUsers, setSelectedUsers] = useState<string[]>(['all']);
-  const [includeNonTagged, setIncludeNonTagged] = useState(false);
-
-  // Load Orange Party members and forum posts
-  const { data: members, isLoading: membersLoading } = useNostrMembers();
-  const memberPubkeys = useMemo(() => members?.map(m => m.pubkey) || [], [members]);
-  const { data: posts = [], isLoading } = useProcessedForumPosts(
-    memberPubkeys,
-    members,
-    { enabled: !!members && memberPubkeys.length > 0, includeNonTagged }
-  );
-  const [showCreatePost, setShowCreatePost] = useState(false);
+  const [includeNonTagged, setIncludeNonTagged] = useState(true); // Default to true for politicianMonitor
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
-  const [replyDialog, setReplyDialog] = useState<{ open: boolean; parentEventId: string; parentAuthor: string }>({
-    open: false,
-    parentEventId: '',
-    parentAuthor: '',
-  });
   const [rawEventDialog, setRawEventDialog] = useState<{ open: boolean; event: any }>({
     open: false,
     event: null,
   });
   const qrCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  // PoliticianMonitor specific pubkey
+  const politicianMonitorPubkey = '8dacfe2a58663e3cc6f2de1f2aa651093549524d052d3926823376268ba8d974';
+  const memberPubkeys = useMemo(() => [politicianMonitorPubkey], []);
+  const members = useMemo(() => [{ name: 'politicianMonitor', pubkey: politicianMonitorPubkey }], []);
+
+  const { data: posts = [], isLoading } = useProcessedForumPosts(
+    memberPubkeys,
+    members,
+    { enabled: true, includeNonTagged }
+  );
 
   // Generate QR code when raw event dialog opens
   useEffect(() => {
@@ -72,20 +64,12 @@ const Forum = () => {
   const filteredPosts = posts.filter(post => {
     const matchesSearch = post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          post.content.toLowerCase().includes(searchTerm.toLowerCase());
-
-    // For user filtering with multi-select
-    let matchesUser = true;
-    if (!selectedUsers.includes('all') && selectedUsers.length > 0) {
-      // Check if the authorName matches any of the selected users
-      matchesUser = selectedUsers.includes(post.authorName);
-    }
-
-    return matchesSearch && matchesUser;
+    return matchesSearch;
   });
 
   useSeoMeta({
-    title: 'Orange Party Forum - Open Discussion',
-    description: 'Join the discussion on Bitcoin, free speech, technology, and building a better future through peaceful means.',
+    title: 'Politician Monitor - Political Tracking',
+    description: 'Monitor and track political developments and analysis from politicianMonitor.',
   });
 
   const formatTimeAgo = (timestamp: string) => {
@@ -122,13 +106,13 @@ const Forum = () => {
 
     return (
       <div className="space-y-2">
-        <Card className={`border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow overflow-hidden ${post.isStickied ? 'border-orange-300 bg-orange-50 dark:bg-orange-900/20' : ''}`}>
+        <Card className={`border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow overflow-hidden ${post.isStickied ? 'border-blue-300 bg-blue-50 dark:bg-blue-900/20' : ''}`}>
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-2">
                   {post.isStickied && (
-                    <Badge variant="secondary" className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 text-xs">
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-xs">
                       Pinned
                     </Badge>
                   )}
@@ -137,7 +121,7 @@ const Forum = () => {
                   </Badge>
                 </div>
                 <div className="flex items-center gap-2">
-                  <CardTitle className="text-lg hover:text-orange-600 dark:hover:text-orange-400 cursor-pointer break-words flex-1">
+                  <CardTitle className="text-lg hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer break-words flex-1">
                     {post.title}
                   </CardTitle>
                   <div className="flex items-center gap-1">
@@ -172,14 +156,9 @@ const Forum = () => {
                 </div>
               <CardDescription className="flex items-center gap-4 text-sm mt-2">
                 <span className="flex items-center gap-1">
-                  {post.isMemberPost ? (
-                    <Crown className="h-3 w-3 text-orange-500" />
-                  ) : (
-                    <User className="h-3 w-3" />
-                  )}
+                  <Monitor className="h-3 w-3 text-blue-500" />
                   <span className="break-all">
-                    {post.isMemberPost ? '🍊' : '👤'}{post.authorName}
-                    {post.isMemberPost && <span className="text-orange-600 dark:text-orange-400 text-xs ml-1">(Member)</span>}
+                    📊 politicianMonitor
                   </span>
                 </span>
                 <span className="flex items-center gap-1">
@@ -245,15 +224,6 @@ const Forum = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <ReactionCountDisplay eventId={post.id} />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8"
-                  onClick={() => setReplyDialog({ open: true, parentEventId: post.id, parentAuthor: post.author })}
-                >
-                  <MessageSquare className="h-4 w-4 mr-1" />
-                  Reply
-                </Button>
                 <span className="text-sm text-gray-500">
                   {post.comments} {post.comments === 1 ? 'reply' : 'replies'}
                 </span>
@@ -273,14 +243,9 @@ const Forum = () => {
                 <CardContent className="pt-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      {reply.isMemberPost ? (
-                        <Crown className="h-3 w-3 text-orange-500" />
-                      ) : (
-                        <User className="h-3 w-3" />
-                      )}
+                      <User className="h-3 w-3" />
                       <span className="text-sm font-medium break-all">
-                        {reply.isMemberPost ? '🍊' : '👤'}{reply.authorName}
-                        {reply.isMemberPost && <span className="text-orange-600 dark:text-orange-400 text-xs ml-1">(Member)</span>}
+                        👤{reply.authorName}
                       </span>
                       <span className="text-xs text-gray-500">
                         {formatTimeAgo(reply.timestamp)}
@@ -305,14 +270,6 @@ const Forum = () => {
                   </p>
                   <div className="flex items-center gap-2 mt-2">
                     <ReactionCountDisplay eventId={reply.id} size="sm" />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 text-xs"
-                      onClick={() => setReplyDialog({ open: true, parentEventId: post.id, parentAuthor: reply.author })}
-                    >
-                      Reply
-                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -329,34 +286,24 @@ const Forum = () => {
       <header className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           <Link to="/" className="flex items-center space-x-3 min-w-0">
-            <div className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center">
-              <span className="text-white font-bold text-xl">🍊</span>
+            <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+              <Monitor className="h-6 w-6 text-white" />
             </div>
             <div className="hidden sm:block">
-              <h1 className="text-2xl font-bold text-orange-600 dark:text-orange-400">Orange Party</h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Community Forum</p>
+              <h1 className="text-2xl font-bold text-blue-600 dark:text-blue-400">Politician Monitor</h1>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Political Analysis & Tracking</p>
             </div>
           </Link>
 
           <div className="flex items-center space-x-3 sm:space-x-4">
             <Link
-              to="/politician-monitor"
-              className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 text-sm hidden sm:block"
+              to="/forum"
+              className="text-gray-700 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 text-sm hidden sm:block"
             >
-              Political Monitor
+              Forum
             </Link>
 
-            <Button
-              className="bg-orange-500 hover:bg-orange-600 text-white"
-              onClick={() => setShowCreatePost(true)}
-              size="sm"
-            >
-              <Plus className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">New Post</span>
-            </Button>
-
             <div className="border-l border-gray-300 dark:border-gray-600 h-8"></div>
-
             <LoginArea />
           </div>
         </div>
@@ -368,28 +315,34 @@ const Forum = () => {
           <div className="lg:col-span-1 order-2 lg:order-1">
             <Card className="border-gray-200 dark:border-gray-700 mb-6">
               <CardHeader>
-                <CardTitle className="text-lg">About Orange Party</CardTitle>
+                <CardTitle className="text-lg">About Politician Monitor</CardTitle>
               </CardHeader>
               <CardContent className="text-sm">
                 <p className="text-gray-600 dark:text-gray-300 mb-4">
-                  Real discussions from Orange Party members on Nostr. Exploring Bitcoin, free speech, and peaceful solutions to societal challenges.
+                  Political analysis, tracking, and monitoring from politicianMonitor on Nostr.
+                  Independent analysis of political developments and trends.
                 </p>
-                <div className="mb-4">
-                  <p className="text-gray-600 dark:text-gray-300 mb-2 font-medium">Current Members:</p>
-                  <div className="flex flex-wrap gap-1">
-                    {members?.map((member) => (
-                      <Badge key={member.pubkey} variant="outline" className="text-xs">
-                        🍊 {member.name}
-                      </Badge>
-                    ))}
-                  </div>
+                <div className="space-y-2 mb-4">
+                  <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                    Live Nostr Feed
+                  </Badge>
                 </div>
-                <Badge variant="secondary" className="mb-2 bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
-                  Live Nostr Feed
-                </Badge>
-                <Badge variant="secondary" className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
-                  Not an Official Political Party
-                </Badge>
+                <div className="pt-2 border-t border-gray-200 dark:border-gray-600">
+                  <a
+                    href="https://bitcoinorangeparty.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 text-sm font-medium"
+                  >
+                    🍊 Visit Bitcoin Orange Party
+                    <svg className="ml-1 h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Another Orange Party informational site
+                  </p>
+                </div>
               </CardContent>
             </Card>
 
@@ -409,67 +362,7 @@ const Forum = () => {
                   </Label>
                 </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">
-                  Show all posts from Orange Party members, not just #orangeparty tagged ones
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-gray-200 dark:border-gray-700 mb-6">
-              <CardHeader>
-                <CardTitle className="text-lg">Filter by Member</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm">
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="all-members"
-                      checked={selectedUsers.includes('all')}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setSelectedUsers(['all']);
-                        } else {
-                          setSelectedUsers([]);
-                        }
-                      }}
-                    />
-                    <Label htmlFor="all-members" className="text-sm font-medium">
-                      All Members
-                    </Label>
-                  </div>
-                  {members?.map((member) => (
-                    <div key={member.pubkey} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={member.name}
-                        checked={selectedUsers.includes(member.name) || selectedUsers.includes('all')}
-                        disabled={selectedUsers.includes('all')}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setSelectedUsers(prev => [...prev.filter(u => u !== 'all'), member.name]);
-                          } else {
-                            setSelectedUsers(prev => prev.filter(u => u !== member.name));
-                          }
-                        }}
-                      />
-                      <Label htmlFor={member.name} className="text-sm">
-                        🍊 {member.name}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-gray-200 dark:border-gray-700">
-              <CardHeader>
-                <CardTitle className="text-lg">Forum Rules</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm space-y-2">
-                <div className="text-gray-600 dark:text-gray-300">
-                  <p>• Be respectful and civil</p>
-                  <p>• No violence or threats</p>
-                  <p>• Engage in good faith</p>
-                  <p>• No spam or self-promotion</p>
-                  <p>• Stay on topic</p>
+                  Show all posts from politicianMonitor, not just tagged ones
                 </div>
               </CardContent>
             </Card>
@@ -482,7 +375,7 @@ const Forum = () => {
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="Search discussions..."
+                  placeholder="Search political analysis..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -490,10 +383,9 @@ const Forum = () => {
               </div>
             </div>
 
-
             {/* Posts */}
             <div className="space-y-4">
-              {isLoading || membersLoading ? (
+              {isLoading ? (
                 <Card className="border-gray-200 dark:border-gray-700">
                   <CardContent className="text-center py-12">
                     <div className="animate-pulse">
@@ -501,7 +393,7 @@ const Forum = () => {
                       <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-1/2 mx-auto"></div>
                     </div>
                     <p className="text-gray-500 dark:text-gray-400 mt-4">
-                      Loading Orange Party discussions from Nostr...
+                      Loading political analysis from Nostr...
                     </p>
                   </CardContent>
                 </Card>
@@ -515,7 +407,7 @@ const Forum = () => {
                     <Card className="border-gray-200 dark:border-gray-700">
                       <CardContent className="text-center py-12">
                         <p className="text-gray-500 dark:text-gray-400">
-                          No posts found matching your criteria.
+                          No posts found matching your search.
                         </p>
                       </CardContent>
                     </Card>
@@ -523,23 +415,9 @@ const Forum = () => {
                 </>
               )}
             </div>
-
           </div>
         </div>
       </div>
-
-      {/* Dialogs */}
-      <CreatePostDialog
-        open={showCreatePost}
-        onOpenChange={setShowCreatePost}
-      />
-
-      <ReplyDialog
-        open={replyDialog.open}
-        onOpenChange={(open) => setReplyDialog(prev => ({ ...prev, open }))}
-        parentEventId={replyDialog.parentEventId}
-        parentAuthor={replyDialog.parentAuthor}
-      />
 
       {/* Raw Event Dialog */}
       <Dialog open={rawEventDialog.open} onOpenChange={(open) => setRawEventDialog(prev => ({ ...prev, open }))}>
@@ -611,4 +489,4 @@ const Forum = () => {
   );
 };
 
-export default Forum;
+export default PoliticianMonitor;

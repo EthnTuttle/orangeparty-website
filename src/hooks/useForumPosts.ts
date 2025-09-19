@@ -2,6 +2,69 @@ import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState, useEffect } from 'react';
 import type { NostrEvent } from '@nostrify/nostrify';
+import { nip19 } from 'nostr-tools';
+
+// Media URL detection utility
+function extractMediaUrls(content: string): { images: string[]; videos: string[] } {
+  const imageExtensions = /\.(jpg|jpeg|png|gif|webp|svg)(\?[^\s]*)?$/i;
+  const videoExtensions = /\.(mp4|webm|ogg|mov|avi|m4v)(\?[^\s]*)?$/i;
+  const urlRegex = /(https?:\/\/[^\s]+)/gi;
+
+  const urls = content.match(urlRegex) || [];
+  const images: string[] = [];
+  const videos: string[] = [];
+
+  urls.forEach(url => {
+    // Clean up URL (remove trailing punctuation)
+    const cleanUrl = url.replace(/[.,;!?)]+$/, '');
+
+    if (imageExtensions.test(cleanUrl)) {
+      images.push(cleanUrl);
+    } else if (videoExtensions.test(cleanUrl)) {
+      videos.push(cleanUrl);
+    }
+  });
+
+  return { images, videos };
+}
+
+// Nostr identifier processing utility
+function processNostrIdentifiers(content: string, memberMap: Map<string, string>): string {
+  // Match nevent, nprofile, npub, note identifiers
+  const nostrRegex = /(nevent1[0-9a-z]+|nprofile1[0-9a-z]+|npub1[0-9a-z]+|note1[0-9a-z]+)/gi;
+
+  return content.replace(nostrRegex, (match) => {
+    try {
+      const decoded = nip19.decode(match);
+
+      switch (decoded.type) {
+        case 'nevent':
+          return `🔗 Event: ${decoded.data.id.substring(0, 8)}...`;
+
+        case 'nprofile':
+          const profilePubkey = decoded.data.pubkey;
+          const profileName = memberMap.get(profilePubkey) || profilePubkey.substring(0, 8);
+          const isMember = memberMap.has(profilePubkey);
+          return `${isMember ? '🍊' : '👤'} ${profileName}`;
+
+        case 'npub':
+          const pubkeyName = memberMap.get(decoded.data) || decoded.data.substring(0, 8);
+          const isOrangeMember = memberMap.has(decoded.data);
+          return `${isOrangeMember ? '🍊' : '👤'} ${pubkeyName}`;
+
+        case 'note':
+          return `📝 Note: ${decoded.data.substring(0, 8)}...`;
+
+        default:
+          return match;
+      }
+    } catch (error) {
+      // If decoding fails, return original match with indicator
+      console.warn('Failed to decode Nostr identifier:', match, error);
+      return `❓ ${match}`;
+    }
+  });
+}
 
 export interface ForumPost {
   id: string;
@@ -20,51 +83,92 @@ export interface ForumPost {
   parentId?: string;
   isMemberPost: boolean;
   event: NostrEvent;
+  mediaUrls?: {
+    images: string[];
+    videos: string[];
+  };
 }
 
-export function useForumPosts(memberPubkeys: string[]) {
+export function useForumPosts(memberPubkeys: string[], includeNonTagged: boolean = false) {
   const { nostr } = useNostr();
 
   return useQuery({
-    queryKey: ['forum-posts', memberPubkeys],
+    queryKey: ['forum-posts', memberPubkeys, includeNonTagged],
     queryFn: async () => {
       if (!nostr || memberPubkeys.length === 0) {
-        console.log('No nostr or no member pubkeys:', { nostr: !!nostr, memberPubkeys });
         return [];
       }
 
-      console.log('Querying for member pubkeys:', memberPubkeys);
-      const signal = AbortSignal.timeout(10000);
-      
-      // Query for posts from members
-      const memberEvents = await nostr.query([{
-        kinds: [1], // Text notes
-        authors: memberPubkeys,
-        limit: 100,
-      }], { signal });
-      
-      console.log('Member events found:', memberEvents.length);
+      const signal = AbortSignal.timeout(15000); // Increased timeout
 
-      // Query for replies to member posts (from anyone)
-      const memberPostIds = memberEvents.map(event => event.id);
+      // Run queries in parallel
+      const queries = [
+        // Query for text posts from Orange Party members with #orangeparty tag
+        nostr.query([{
+          kinds: [1], // Text notes only
+          authors: memberPubkeys,
+          '#t': ['orangeparty'],
+          limit: 150,
+        }], { signal }),
+
+        // Query for long-form content from Orange Party members with #orangeparty tag
+        nostr.query([{
+          kinds: [30023], // Long-form content
+          authors: memberPubkeys,
+          '#t': ['orangeparty'],
+          limit: 50,
+        }], { signal }),
+      ];
+
+      // Add non-tagged queries if enabled
+      if (includeNonTagged) {
+        queries.push(
+          // Query for text posts from Orange Party members WITHOUT #orangeparty tag
+          nostr.query([{
+            kinds: [1],
+            authors: memberPubkeys,
+            limit: 100,
+          }], { signal }),
+
+          // Query for long-form content from Orange Party members WITHOUT #orangeparty tag
+          nostr.query([{
+            kinds: [30023],
+            authors: memberPubkeys,
+            limit: 30,
+          }], { signal })
+        );
+      }
+
+      const results = await Promise.all(queries);
+      const [memberTextEvents, memberLongFormEvents, ...nonTaggedResults] = results;
+      const nonTaggedTextEvents = nonTaggedResults[0] || [];
+      const nonTaggedLongFormEvents = nonTaggedResults[1] || [];
+
+      // Get all member post IDs for reply queries (both tagged and non-tagged)
+      const allMemberPosts = [...memberTextEvents, ...memberLongFormEvents, ...nonTaggedTextEvents, ...nonTaggedLongFormEvents];
+      const memberPostIds = allMemberPosts.map(event => event.id);
+
+      // Query for replies to Orange Party member posts (from anyone) - run separately to avoid timeout
       const replyEvents = memberPostIds.length > 0 ? await nostr.query([{
-        kinds: [1],
+        kinds: [1, 1111], // Text notes + Comments
         '#e': memberPostIds,
-        limit: 200,
+        limit: 300,
       }], { signal }) : [];
 
-      // Query for posts that mention members (to catch broader conversations)
-      const mentionEvents = await nostr.query([{
-        kinds: [1],
-        '#p': memberPubkeys,
-        limit: 50,
-      }], { signal });
-
       // Combine all events and deduplicate
-      const allEvents = [...memberEvents, ...replyEvents, ...mentionEvents];
-      const uniqueEvents = allEvents.filter((event, index, self) => 
+      const allEvents = [...memberTextEvents, ...memberLongFormEvents, ...nonTaggedTextEvents, ...nonTaggedLongFormEvents, ...replyEvents];
+      const uniqueEvents = allEvents.filter((event, index, self) =>
         index === self.findIndex(e => e.id === event.id)
       );
+
+      console.log('Query results:', {
+        memberTextEvents: memberTextEvents.length,
+        memberLongFormEvents: memberLongFormEvents.length,
+        nonTaggedTextEvents: nonTaggedTextEvents.length,
+        nonTaggedLongFormEvents: nonTaggedLongFormEvents.length,
+        replyEvents: replyEvents.length,
+        totalUnique: uniqueEvents.length
+      });
 
       return uniqueEvents;
     },
@@ -74,52 +178,65 @@ export function useForumPosts(memberPubkeys: string[]) {
 }
 
 export function useProcessedForumPosts(
-  memberPubkeys: string[], 
+  memberPubkeys: string[],
   members?: Array<{name: string, pubkey: string}>,
-  _options?: { enabled?: boolean }
+  options?: { enabled?: boolean; includeNonTagged?: boolean }
 ) {
-  const { data: events, isLoading: eventsLoading } = useForumPosts(memberPubkeys);
+  const { data: events, isLoading: eventsLoading } = useForumPosts(memberPubkeys, options?.includeNonTagged || false);
   const [processedPosts, setProcessedPosts] = useState<ForumPost[]>([]);
-  
-  // Memoize memberPubkeys to prevent infinite loops
-  const stableMemberPubkeys = useMemo(() => memberPubkeys, [memberPubkeys]);
 
   // Process posts when data changes
   useEffect(() => {
-    console.log('useEffect triggered with:', { 
-      events: !!events, 
-      members: !!members, 
-      eventsLength: events?.length,
-      membersLength: members?.length,
-      memberPubkeysLength: stableMemberPubkeys.length
-    });
-    
     if (!events || !members || events.length === 0) {
-      console.log('Missing data for processing:', { events: !!events, members: !!members, eventsLength: events?.length });
       setProcessedPosts([]);
       return;
     }
 
-    console.log('Starting post processing with:', { 
-      eventsCount: events.length, 
-      membersCount: members.length,
-      memberPubkeys: stableMemberPubkeys.length 
-    });
+    console.log('Processing events:', events.length, 'events');
+    console.log('Member pubkeys:', memberPubkeys);
+    console.log('Events by author:', events.reduce((acc, event) => {
+      acc[event.pubkey] = (acc[event.pubkey] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>));
 
     const memberMap = new Map(members.map(m => [m.pubkey, m.name]));
 
       // Convert events to posts
       const allPosts: ForumPost[] = events.map((event: NostrEvent) => {
-        const content = event.content || '';
-        const firstLine = content.split('\n')[0] || content.substring(0, 100);
+        let content = event.content || '';
+        let title = '';
+
+        // Process Nostr identifiers in content
+        content = processNostrIdentifiers(content, memberMap);
+
+        // Handle different event kinds
+        if (event.kind === 30023) {
+          // Long-form content - look for title in tags
+          const titleTag = event.tags?.find(tag => tag[0] === 'title');
+          title = titleTag ? titleTag[1] : content.split('\n')[0] || 'Long-form Post';
+          // For long-form, use first paragraph as preview
+          const firstParagraph = content.split('\n\n')[0] || content.substring(0, 200);
+          if (content.length > 200) content = firstParagraph + '...';
+        } else {
+          // Regular text note
+          const firstLine = content.split('\n')[0] || content.substring(0, 100);
+          title = firstLine.length > 80 ? firstLine.substring(0, 80) + '...' : firstLine;
+        }
+
+        // Process Nostr identifiers in title as well
+        title = processNostrIdentifiers(title, memberMap);
 
         // Check if this is a reply by looking for 'e' tags
         const replyTags = event.tags?.filter(tag => tag[0] === 'e') || [];
         const isReply = replyTags.length > 0;
         const parentId = isReply ? replyTags[0][1] : undefined;
 
+
         // Check if this is a member post
-        const isMemberPost = stableMemberPubkeys.includes(event.pubkey);
+        const isMemberPost = memberPubkeys.includes(event.pubkey);
+
+        // Extract media URLs for top-level posts only (not replies)
+        const mediaUrls = !isReply ? extractMediaUrls(content) : undefined;
 
         // Categorize based on topic tags first, then content keywords
         let category = 'General';
@@ -151,7 +268,7 @@ export function useProcessedForumPosts(
 
         return {
           id: event.id,
-          title: isReply ? `Re: ${firstLine.substring(0, 60)}...` : (firstLine.length > 80 ? firstLine.substring(0, 80) + '...' : firstLine),
+          title: isReply ? `Re: ${title.substring(0, 60)}...` : title,
           content: content,
           author: event.pubkey,
           authorName: memberMap.get(event.pubkey) || event.pubkey.substring(0, 8),
@@ -166,6 +283,7 @@ export function useProcessedForumPosts(
           replies: [],
           isMemberPost,
           event,
+          mediaUrls,
         };
       });
 
@@ -205,17 +323,11 @@ export function useProcessedForumPosts(
         if (!a.isMemberPost && b.isMemberPost) return 1;
         return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
       });
-      
-      console.log('Final processed posts:', {
-        total: sortedPosts.length,
-        memberPosts: sortedPosts.filter(p => p.isMemberPost).length,
-        authors: [...new Set(sortedPosts.map(p => p.authorName))],
-        topLevelPosts: topLevelPosts.length
-      });
-      
+
+
       setProcessedPosts(sortedPosts);
-    }, [events, members, stableMemberPubkeys]);
-  
+    }, [events, members, memberPubkeys]);
+
   return {
     data: processedPosts,
     isLoading: eventsLoading,

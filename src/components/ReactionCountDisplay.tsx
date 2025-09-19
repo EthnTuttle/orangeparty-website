@@ -29,7 +29,7 @@ export function ReactionCountDisplay({ eventId, className = '', size = 'normal' 
           <ArrowUp className={iconClass} />
         </Button>
         <span className={`${textClass} font-medium text-gray-400 min-w-[2rem] text-center`}>
-          ...
+          0
         </span>
         <Button variant="ghost" size="sm" className={`${buttonClass} hover:bg-red-100 dark:hover:bg-red-900`} disabled>
           <ArrowDown className={iconClass} />

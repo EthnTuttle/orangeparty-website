@@ -27,6 +27,15 @@ export function useReactions(eventId: string | undefined) {
         limit: 100, // Reasonable limit for reactions
       }], { signal });
 
+      console.log(`Reactions for event ${eventId}:`, reactions.length, 'reactions found');
+      if (reactions.length > 0) {
+        console.log('Sample reactions:', reactions.slice(0, 3).map(r => ({
+          content: r.content,
+          pubkey: r.pubkey.substring(0, 8),
+          created_at: r.created_at
+        })));
+      }
+
       // Count upvotes and downvotes
       let upvotes = 0;
       let downvotes = 0;

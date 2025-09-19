@@ -50,6 +50,7 @@ export function CreatePostDialog({ open, onOpenChange }: CreatePostDialogProps) 
 
       // Create tags for the post
       const tags = [
+        ['t', 'orangeparty'], // Orange Party tag for filtering
         ['t', category], // Topic tag
         ['client', 'orange-party'], // Client identification
       ];
