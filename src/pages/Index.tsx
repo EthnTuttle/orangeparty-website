@@ -25,6 +25,7 @@ const Index = () => {
           <nav className="flex items-center space-x-3 sm:space-x-6">
             <Link to="/forum" className="text-gray-700 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 hidden sm:block">Forum</Link>
             <Link to="/politician-monitor" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hidden sm:block">Political Monitor</Link>
+            <Link to="/resources" className="text-gray-700 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 hidden sm:block">Resources</Link>
             <Button variant="outline" size="sm" className="border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900" asChild>
               <Link to="/forum">
                 <span className="sm:hidden">Forum</span>
@@ -53,7 +54,17 @@ const Index = () => {
             <Button size="lg" className="bg-orange-500 hover:bg-orange-600 text-white">
               <Link to="/forum">Join the Discussion</Link>
             </Button>
-            <Button size="lg" variant="outline" className="border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900">
+            <Button
+              size="lg"
+              variant="outline"
+              className="border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900"
+              onClick={() => {
+                document.getElementById('core-principles')?.scrollIntoView({
+                  behavior: 'smooth',
+                  block: 'start'
+                });
+              }}
+            >
               Learn More
             </Button>
           </div>
@@ -61,7 +72,7 @@ const Index = () => {
       </section>
 
       {/* Key Principles */}
-      <section className="py-12 sm:py-16 px-4 sm:px-6 bg-white/70 dark:bg-gray-800/70">
+      <section id="core-principles" className="py-12 sm:py-16 px-4 sm:px-6 bg-white/70 dark:bg-gray-800/70">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-12 text-gray-900 dark:text-gray-100">
             Our Core Principles

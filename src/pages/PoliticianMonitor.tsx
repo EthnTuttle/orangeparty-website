@@ -302,6 +302,12 @@ const PoliticianMonitor = () => {
             >
               Forum
             </Link>
+            <Link
+              to="/resources"
+              className="text-gray-700 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 text-sm hidden sm:block"
+            >
+              Resources
+            </Link>
 
             <div className="border-l border-gray-300 dark:border-gray-600 h-8"></div>
             <LoginArea />

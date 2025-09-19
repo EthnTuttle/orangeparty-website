@@ -345,6 +345,12 @@ const Forum = () => {
             >
               Political Monitor
             </Link>
+            <Link
+              to="/resources"
+              className="text-gray-700 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 text-sm hidden sm:block"
+            >
+              Resources
+            </Link>
 
             <Button
               className="bg-orange-500 hover:bg-orange-600 text-white"
