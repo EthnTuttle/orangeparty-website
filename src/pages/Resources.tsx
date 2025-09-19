@@ -273,11 +273,27 @@ const Resources = () => {
       <footer className="py-6 sm:py-8 px-4 sm:px-6 border-t border-orange-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 mt-12">
         <div className="max-w-6xl mx-auto text-center">
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-            <strong>Note:</strong> External links lead to independent websites not affiliated with this Orange Party forum.
+            Vibe Coded with 🧡 for the Orange Party community
           </p>
-          <p className="text-xs text-gray-500 dark:text-gray-500">
-            Please verify information and use your own judgment when exploring external resources.
-          </p>
+          <div className="flex items-center justify-center gap-4 text-xs text-gray-500 dark:text-gray-400 mb-4">
+            <a
+              href="https://github.com/EthnTuttle/orangeparty-website/issues"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 hover:text-orange-600 dark:hover:text-orange-400 transition-colors"
+            >
+              <ExternalLink className="h-3 w-3" />
+              Suggest Changes or Request to be Added
+            </a>
+          </div>
+          <div className="border-t border-orange-200 dark:border-gray-600 pt-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+              <strong>Note:</strong> External links lead to independent websites not affiliated with this Orange Party forum.
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-500">
+              Please verify information and use your own judgment when exploring external resources.
+            </p>
+          </div>
         </div>
       </footer>
     </div>

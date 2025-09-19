@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar, User, ExternalLink } from 'lucide-react';
 import type { NostrEvent } from '@nostrify/nostrify';
 import { nip19 } from 'nostr-tools';
+import { getPrimalUrlForPubkey } from '@/lib/nostrUtils';
 
 // Simplified Nostr identifier processing for referenced events (to prevent deep recursion)
 function processNostrIdentifiersSimple(content: string, memberMap: Map<string, string>): string {
@@ -114,7 +115,25 @@ export function ReferencedEventCard({ event, memberMap, depth = 1 }: ReferencedE
           <span className="flex items-center gap-1">
             <User className="h-3 w-3" />
             <span className={isMemberPost ? 'text-orange-600 dark:text-orange-400' : ''}>
-              {isMemberPost ? '🍊' : '👤'} {authorName}
+              {(() => {
+                const primalUrl = getPrimalUrlForPubkey(event.pubkey);
+                const authorDisplay = `${isMemberPost ? '🍊' : '👤'} ${authorName}`;
+
+                if (primalUrl) {
+                  return (
+                    <a
+                      href={primalUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:text-orange-600 dark:hover:text-orange-400 transition-colors"
+                    >
+                      {authorDisplay}
+                    </a>
+                  );
+                } else {
+                  return authorDisplay;
+                }
+              })()}
             </span>
           </span>
           <span className="flex items-center gap-1">

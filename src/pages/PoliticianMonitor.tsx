@@ -11,11 +11,12 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 
-import { MessageSquare, Share, Calendar, User, Search, Plus, Crown, ChevronDown, ChevronRight, MoreVertical, Eye, Monitor } from 'lucide-react';
+import { MessageSquare, Share, Calendar, User, Search, Plus, Crown, ChevronDown, ChevronRight, MoreVertical, Eye, Monitor, ExternalLink } from 'lucide-react';
 import { ReactionCountDisplay } from '@/components/ReactionCountDisplay';
 import { ReferencedEventCard } from '@/components/ReferencedEventCard';
 import { LoginArea } from '@/components/auth/LoginArea';
 import { useProcessedForumPosts, type ForumPost } from '@/hooks/useForumPosts';
+import { getPrimalUrlForPubkey } from '@/lib/nostrUtils';
 import { useMemo } from 'react';
 
 const PoliticianMonitor = () => {
@@ -160,7 +161,25 @@ const PoliticianMonitor = () => {
                 <span className="flex items-center gap-1">
                   <Monitor className="h-3 w-3 text-blue-500" />
                   <span className="break-all">
-                    📊 politicianMonitor
+                    {(() => {
+                      const primalUrl = getPrimalUrlForPubkey(post.author);
+                      const authorDisplay = '📊 politicianMonitor';
+
+                      if (primalUrl) {
+                        return (
+                          <a
+                            href={primalUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                          >
+                            {authorDisplay}
+                          </a>
+                        );
+                      } else {
+                        return authorDisplay;
+                      }
+                    })()}
                   </span>
                 </span>
                 <span className="flex items-center gap-1">
@@ -264,7 +283,25 @@ const PoliticianMonitor = () => {
                     <div className="flex items-center gap-2">
                       <User className="h-3 w-3" />
                       <span className="text-sm font-medium break-all">
-                        👤{reply.authorName}
+                        {(() => {
+                          const primalUrl = getPrimalUrlForPubkey(reply.author);
+                          const authorDisplay = `👤${reply.authorName}`;
+
+                          if (primalUrl) {
+                            return (
+                              <a
+                                href={primalUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                              >
+                                {authorDisplay}
+                              </a>
+                            );
+                          } else {
+                            return authorDisplay;
+                          }
+                        })()}
                       </span>
                       <span className="text-xs text-gray-500">
                         {formatTimeAgo(reply.timestamp)}
@@ -443,6 +480,26 @@ const PoliticianMonitor = () => {
           </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <footer className="py-6 sm:py-8 px-4 sm:px-6 border-t border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50">
+        <div className="max-w-7xl mx-auto text-center">
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+            Vibe Coded with 🧡 for the Orange Party community
+          </p>
+          <div className="flex items-center justify-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+            <a
+              href="https://github.com/EthnTuttle/orangeparty-website/issues"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            >
+              <ExternalLink className="h-3 w-3" />
+              Suggest Changes or Request to be Added
+            </a>
+          </div>
+        </div>
+      </footer>
 
       {/* Raw Event Dialog */}
       <Dialog open={rawEventDialog.open} onOpenChange={(open) => setRawEventDialog(prev => ({ ...prev, open }))}>
