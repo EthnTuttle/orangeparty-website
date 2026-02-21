@@ -1,42 +1,26 @@
-import { useQuery } from '@tanstack/react-query';
+import { useOrangePartyMembers, useOrangePartyMemberPubkeys } from '@/hooks/useOrangePartyMembers';
 
-interface NostrMember {
+export interface NostrMember {
   name: string;
   pubkey: string;
 }
 
-interface NostrJson {
-  names: Record<string, string>;
-}
-
+/**
+ * Returns the Orange Party member list.
+ * Data is sourced from NIP-51 kind 30000 follow sets published by admin
+ * pubkeys, with a fallback to the static nostr.json file.
+ */
 export function useNostrMembers() {
-  return useQuery({
-    queryKey: ['nostr-members'],
-    queryFn: async (): Promise<NostrMember[]> => {
-      const response = await fetch('/.well-known/nostr.json');
-      if (!response.ok) {
-        throw new Error('Failed to load nostr.json');
-      }
-      const data: NostrJson = await response.json();
-      
-      // Convert the names object to an array of members
-      return Object.entries(data.names).map(([name, pubkey]) => ({
-        name,
-        pubkey
-      }));
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: 3,
-  });
+  return useOrangePartyMembers();
 }
 
-export function useNostrMemberPubkeys() {
-  const { data: members } = useNostrMembers();
-  return members?.map(member => member.pubkey) || [];
+/** Returns just the array of member pubkeys. */
+export function useNostrMemberPubkeys(): string[] {
+  return useOrangePartyMemberPubkeys();
 }
 
 export function getMemberName(pubkey: string, members?: NostrMember[]): string {
   if (!members) return pubkey.substring(0, 8);
-  const member = members.find(m => m.pubkey === pubkey);
-  return member?.name || pubkey.substring(0, 8);
+  const member = members.find((m) => m.pubkey === pubkey);
+  return member?.name ?? pubkey.substring(0, 8);
 }

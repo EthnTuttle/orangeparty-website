@@ -452,6 +452,11 @@ const Forum = () => {
                 <Badge variant="secondary" className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
                   Not an Official Political Party
                 </Badge>
+                <div className="mt-3">
+                  <Link to="/members" className="text-xs text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 underline underline-offset-2">
+                    Manage member list →
+                  </Link>
+                </div>
               </CardContent>
             </Card>
 

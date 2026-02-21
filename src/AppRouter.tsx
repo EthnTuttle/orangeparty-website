@@ -3,6 +3,7 @@ import { ScrollToTop } from "./components/ScrollToTop";
 
 import Index from "./pages/Index";
 import Forum from "./pages/Forum";
+import Members from "./pages/Members";
 import PoliticianMonitor from "./pages/PoliticianMonitor";
 import Resources from "./pages/Resources";
 import { NIP19Page } from "./pages/NIP19Page";
@@ -17,6 +18,7 @@ export function AppRouter() {
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/forum" element={<Forum />} />
+        <Route path="/members" element={<Members />} />
         <Route path="/politician-monitor" element={<PoliticianMonitor />} />
         <Route path="/resources" element={<Resources />} />
         {/* NIP-19 route for npub1, note1, naddr1, nevent1, nprofile1 */}

@@ -122,66 +122,46 @@ export function useForumPosts(memberPubkeys: string[], includeNonTagged: boolean
 
       const signal = AbortSignal.timeout(15000); // Increased timeout
 
-      // TheOrangeParty special pubkey that always shows regardless of tags
-      const theOrangePartyPubkey = '6542d8ac165eed065d28ec345ac5aa58503b20d0feb5ab20a26bb63d875f1ad9';
-      const regularMemberPubkeys = memberPubkeys.filter(pubkey => pubkey !== theOrangePartyPubkey);
-
-      // Run queries in parallel
-      const queries = [
-        // Query for text posts from regular Orange Party members with #orangeparty tag
+      // Run tagged queries in parallel
+      const taggedQueries = [
+        // Query for text posts from all members with #orangeparty tag
         nostr.query([{
-          kinds: [1], // Text notes only
-          authors: regularMemberPubkeys,
+          kinds: [1],
+          authors: memberPubkeys,
           '#t': ['orangeparty'],
           limit: 150,
         }], { signal }),
 
-        // Query for long-form content from regular Orange Party members with #orangeparty tag
+        // Query for long-form content from all members with #orangeparty tag
         nostr.query([{
-          kinds: [30023], // Long-form content
-          authors: regularMemberPubkeys,
+          kinds: [30023],
+          authors: memberPubkeys,
           '#t': ['orangeparty'],
           limit: 50,
         }], { signal }),
-
-        // Special query for TheOrangeParty - ALWAYS show their posts regardless of tags
-        ...(memberPubkeys.includes(theOrangePartyPubkey) ? [
-          nostr.query([{
-            kinds: [1], // Text notes
-            authors: [theOrangePartyPubkey],
-            limit: 100,
-          }], { signal }),
-          nostr.query([{
-            kinds: [30023], // Long-form content
-            authors: [theOrangePartyPubkey],
-            limit: 30,
-          }], { signal })
-        ] : []),
       ];
 
-      // Add non-tagged queries if enabled (excluding TheOrangeParty since they're always shown)
+      // Add non-tagged queries if enabled
       if (includeNonTagged) {
-        queries.push(
-          // Query for text posts from regular Orange Party members WITHOUT #orangeparty tag
+        taggedQueries.push(
           nostr.query([{
             kinds: [1],
-            authors: regularMemberPubkeys,
+            authors: memberPubkeys,
             limit: 100,
           }], { signal }),
 
-          // Query for long-form content from regular Orange Party members WITHOUT #orangeparty tag
           nostr.query([{
             kinds: [30023],
-            authors: regularMemberPubkeys,
+            authors: memberPubkeys,
             limit: 30,
           }], { signal })
         );
       }
 
-      const results = await Promise.all(queries);
-      const [memberTextEvents, memberLongFormEvents, ...nonTaggedResults] = results;
-      const nonTaggedTextEvents = nonTaggedResults[0] || [];
-      const nonTaggedLongFormEvents = nonTaggedResults[1] || [];
+      const results = await Promise.all(taggedQueries);
+      const [memberTextEvents, memberLongFormEvents] = results;
+      const nonTaggedTextEvents = results[2] ?? [];
+      const nonTaggedLongFormEvents = results[3] ?? [];
 
       // Get all member post IDs for reply queries (both tagged and non-tagged)
       const allMemberPosts = [...memberTextEvents, ...memberLongFormEvents, ...nonTaggedTextEvents, ...nonTaggedLongFormEvents];
